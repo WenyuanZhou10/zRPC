@@ -1,5 +1,6 @@
-package cn.wenyuan.zrpc.Server;
+package cn.wenyuan.zrpc.Server.Impl;
 
+import cn.wenyuan.zrpc.Server.RpcServer;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
 
@@ -9,7 +10,10 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class IOServer implements RpcServer {
+/**
+ *
+ */
+public class BIOSingleThreadServer implements RpcServer {
 
     @Override
     public void start(int port) {
