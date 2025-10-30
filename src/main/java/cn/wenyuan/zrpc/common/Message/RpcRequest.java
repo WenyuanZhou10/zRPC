@@ -15,7 +15,7 @@ public class RpcRequest implements Serializable {
 
     private String requestId;
     private String service;      // e.g. com.foo.UserService
-    private String method;       // e.g. getUser
+    private String methodName;       // e.g. getUser
     private Object[] params;           //参数列表
     private Class<?>[] paramsType;      //参数类型
     private Map<String, String> headers; // 放超时时间、认证信息、序列化方式等

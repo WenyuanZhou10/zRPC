@@ -19,5 +19,5 @@ public class RpcResponse implements Serializable {
     private String errorCode;
     private String errorMessage;
     private Map<String, String> attachments;
-
+    private Exception error;
 }
