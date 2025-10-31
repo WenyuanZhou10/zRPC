@@ -18,6 +18,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -312,5 +313,11 @@ public class NIOServer implements RpcServer {
             expectedFrameSize = -1;
             frameBuffer = null;
         }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        RpcServer server = new NIOServer();
+        server.start(9999);
+        new CountDownLatch(1).await();
     }
 }

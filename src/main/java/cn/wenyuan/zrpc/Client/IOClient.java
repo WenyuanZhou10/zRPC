@@ -25,4 +25,10 @@ public class IOClient {
             throw new RuntimeException(e);
         }
     }
+
+    public static void main(String[] args) {
+        RpcRequest testMethod = RpcRequest.builder().requestId("1").methodName("testMethod").build();
+        RpcResponse response = IOClient.sendRequest("127.0.0.1", 9999, testMethod);
+        System.out.println(response + ": " + response.getResult());
+    }
 }

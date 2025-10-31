@@ -11,6 +11,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.Data;
+import lombok.Getter;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -27,7 +28,6 @@ import java.util.concurrent.ExecutionException;
  * @Version 1.0
  */
 
-@Data
 public class NettyClient implements RpcClient {
 
     private String host;
@@ -36,6 +36,7 @@ public class NettyClient implements RpcClient {
     private final Bootstrap bootstrap;
     private static final EventLoopGroup group;
     private Channel channel;
+    @Getter
     private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
 
     public NettyClient(

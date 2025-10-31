@@ -17,7 +17,6 @@ import java.util.concurrent.CompletableFuture;
  * @Version 1.0
  */
 
-@Data
 public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
 
     private final NettyClient nettyClient;
