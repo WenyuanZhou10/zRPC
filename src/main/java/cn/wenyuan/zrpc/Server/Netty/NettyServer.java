@@ -1,8 +1,11 @@
 package cn.wenyuan.zrpc.Server.Netty;
 
+import cn.wenyuan.zrpc.Server.Impl.NIOServer;
 import cn.wenyuan.zrpc.Server.Netty.nettyInitializer.NettyServerInitializer;
 import cn.wenyuan.zrpc.Server.RpcServer;
 import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
+import cn.wenyuan.zrpc.Server.ServiceRegister.impl.commonServiceRegistry;
+import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
@@ -16,10 +19,10 @@ public class NettyServer implements RpcServer {
     private final EventLoopGroup workerGroup;
     private final ServerBootstrap bootstrap;
 
-    private final ServiceRegistry serviceRegistry;
+    private final LocalServiceCache serviceCache;
 
-    public NettyServer(ServiceRegistry serviceRegistry){
-        this.serviceRegistry = serviceRegistry;
+    public NettyServer(LocalServiceCache serviceCache){
+        this.serviceCache = serviceCache;
 
         // 主 Reactor, 单线程只负责 accept 事件
         this.bossGroup = new NioEventLoopGroup(1);
@@ -30,7 +33,7 @@ public class NettyServer implements RpcServer {
         this.bootstrap = new ServerBootstrap();
         this.bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new NettyServerInitializer(this.serviceRegistry));
+                .childHandler(new NettyServerInitializer(this.serviceCache));
     }
 
     @Override

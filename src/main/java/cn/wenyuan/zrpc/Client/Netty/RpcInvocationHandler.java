@@ -2,11 +2,15 @@ package cn.wenyuan.zrpc.Client.Netty;
 
 
 import cn.wenyuan.zrpc.Client.RpcClient;
+import cn.wenyuan.zrpc.Client.ServiceDiscovery.ServiceDiscovery;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
+import cn.wenyuan.zrpc.common.Service.ServiceInstance;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * @ClassName RpcInvocationHandler
@@ -18,9 +22,17 @@ import java.lang.reflect.Method;
 
 public class RpcInvocationHandler implements InvocationHandler {
 
-    private final RpcClient rpcClient;
+    private final Class<?> serviceInterface;
+    private final ServiceDiscovery serviceDiscovery;
+    private final RpcProxyFactory clientFactory; // 用来获取 RpcClient 连接
 
-    public RpcInvocationHandler(RpcClient rpcClient) {this.rpcClient = rpcClient;}
+    public RpcInvocationHandler(Class<?> serviceInterface,
+                                ServiceDiscovery serviceDiscovery,
+                                RpcProxyFactory clientFactory) {
+        this.serviceInterface = serviceInterface;
+        this.serviceDiscovery = serviceDiscovery;
+        this.clientFactory = clientFactory;
+    }
 
     @Override
     public Object invoke(
@@ -32,16 +44,38 @@ public class RpcInvocationHandler implements InvocationHandler {
         if (Object.class.equals(method.getDeclaringClass())) {
             return method.invoke(this, args);
         }
+        // 1. 获取服务名 (例如 "com.example.UserService")
+        String serviceName = serviceInterface.getName();
+
+        // 2. 服务发现
+        // TODO:负载均衡，目前暂时默认访问 第一个实例
+        List<ServiceInstance> instances = serviceDiscovery.getInstances(serviceName);
+
+        if(instances == null){
+            throw new RuntimeException("No provider available for service: " + serviceName);
+        }
+
+        ServiceInstance instance = instances.get(0);
+
+        // 3.获取RPCClient
+        RpcClient client = clientFactory.getOrCreateClient(instance.getHost(), instance.getPort());
 
         // 1.构建 request
         RpcRequest request = RpcRequest.builder()
+            .requestId(UUID.randomUUID().toString())
             .service(method.getDeclaringClass().getName())
             .methodName(method.getName())
             .params(args)
             .paramsType(method.getParameterTypes())
             .build();
 
-        RpcResponse response = rpcClient.sendRequest(request);
+        RpcResponse response = client.sendRequest(request);
+        if (!response.isSuccess()) {
+            String message = response.getErrorMessage() != null
+                ? response.getErrorMessage()
+                : "remote invocation failed";
+            throw new RuntimeException(message, response.getError());
+        }
 
         return response.getResult();
     }

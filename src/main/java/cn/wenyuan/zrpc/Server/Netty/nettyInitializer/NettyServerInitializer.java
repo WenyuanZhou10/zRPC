@@ -1,6 +1,8 @@
 package cn.wenyuan.zrpc.Server.Netty.nettyInitializer;
 
+import cn.wenyuan.zrpc.Server.Netty.handler.RpcServerHandler;
 import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
+import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -20,10 +22,10 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 
 public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final ServiceRegistry serviceRegistry;
+    private final LocalServiceCache serviceCache;
 
-    public NettyServerInitializer(ServiceRegistry serviceRegistry) {
-        this.serviceRegistry = serviceRegistry;
+    public NettyServerInitializer(LocalServiceCache serviceCache) {
+        this.serviceCache = serviceCache;
     }
 
 
@@ -52,6 +54,6 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast(new ObjectEncoder());
 
         // 5. 执行业务，查找服务并执行
-        pipeline.addLast(new RpcServerHandler(this.serviceRegistry));
+        pipeline.addLast(new RpcServerHandler(this.serviceCache));
     }
 }

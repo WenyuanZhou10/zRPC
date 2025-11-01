@@ -1,7 +1,13 @@
 package cn.wenyuan.zrpc.Server.ServiceRegister;
 
-public interface ServiceRegistry {
-    void register(String serviceName, Object service);
+import cn.wenyuan.zrpc.common.Service.ServiceInstance;
 
-    Object getService(String serviceName);
+public interface ServiceRegistry {
+
+    void register(ServiceInstance instance) throws Exception;
+
+    void unregister(ServiceInstance instance) throws Exception;
+
+    void close();
+
 }

@@ -1,0 +1,18 @@
+version: '3.8' # 指定 compose 文件版本
+
+services:
+  # 这是你的 Zookeeper 服务
+  zookeeper:
+    image: zookeeper:latest  # 使用官方的 zookeeper 镜像
+    container_name: my-zookeeper  # 对应你的 --name my-zookeeper
+    ports:
+      - "21888:2181"           # 对应你的 -p 2181:2181
+    volumes:
+      - zk_data:/data             # 推荐：持久化 ZK 的数据
+      - zk_datalog:/datalog       # 推荐：持久化 ZK 的日志
+    restart: always             # 推荐：容器挂了自动重启
+
+# 声明上面用到的数据卷
+volumes:
+  zk_data:
+  zk_datalog:

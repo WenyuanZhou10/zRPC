@@ -50,7 +50,7 @@ public class BIOSingleThreadServer implements RpcServer {
         return RpcResponse.builder()
                 .requestId(request.getRequestId())
                 .success(true)
-                .result("server already execute " + request.getMethod())
+                .result("server already execute " + request.getMethodName())
                 .build();
     }
 

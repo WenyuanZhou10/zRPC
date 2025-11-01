@@ -2,12 +2,13 @@ package cn.wenyuan.zrpc.Client.Netty;
 
 
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.LengthFieldPrepender;
+import io.netty.handler.codec.serialization.ClassResolver;
+import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 
 /**
@@ -51,7 +52,12 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
         ));
 
         // 4. RpcResponse 解码器：将 ByteBuf 反序列化为 RpcResponse 对象
-        pipeline.addLast(new ObjectEncoder());
+        pipeline.addLast(new ObjectDecoder(new ClassResolver() {
+            @Override
+            public Class<?> resolve(String s) throws ClassNotFoundException {
+                return Class.forName(s);
+            }
+        }));
 
         pipeline.addLast(new RpcClientHandler(nettyClient));
     }

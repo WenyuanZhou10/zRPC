@@ -3,6 +3,7 @@ package cn.wenyuan.zrpc.Server.Netty.handler;
 import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
+import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.Getter;
@@ -20,10 +21,10 @@ import java.lang.reflect.Method;
 public class RpcServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
 
     @Getter
-    private final ServiceRegistry serviceRegistry;
+    private final LocalServiceCache serviceCache;
 
-    public RpcServerHandler(ServiceRegistry serviceRegistry) {
-        this.serviceRegistry = serviceRegistry;
+    public RpcServerHandler(LocalServiceCache serviceCache) {
+        this.serviceCache = serviceCache;
     }
 
     @Override
@@ -32,19 +33,29 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
                 .requestId(request.getRequestId())
                 .build();
 
-        Object service = serviceRegistry.getService(request.getService());
-        if(service == null){
-            throw new RuntimeException("未找到服务: " + request.getService());
+        try {
+            Object service = serviceCache.getService(request.getService());
+            if (service == null) {
+                throw new IllegalStateException("未找到服务: " + request.getService());
+            }
+            Method method = service.getClass().getMethod(
+                    request.getMethodName(),
+                    request.getParamsType()
+            );
+
+            Object result = method.invoke(service, request.getParams());
+            response.setSuccess(true);
+            response.setResult(result);
+        } catch (Exception ex) {
+            response.setSuccess(false);
+            response.setErrorMessage(ex.getMessage());
+            if (ex instanceof Exception exception) {
+                response.setError(exception);
+            } else {
+                response.setError(new RuntimeException(ex));
+            }
         }
-        Method method = service.getClass().getMethod(
-                request.getMethodName(),
-                request.getParamsType()
-        );
 
-        Object result = method.invoke(service, request.getParams());
-
-        response.setResult(result);
-
-        ctx.writeAndFlush(result);
+        ctx.writeAndFlush(response);
     }
 }
