@@ -1,4 +1,4 @@
-package cn.wenyuan.zrpc.Client;
+package cn.wenyuan.zrpc.Client.old_version;
 
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;

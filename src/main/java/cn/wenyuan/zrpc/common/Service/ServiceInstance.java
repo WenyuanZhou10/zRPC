@@ -22,4 +22,20 @@ public class ServiceInstance {
     private String host;
 
     private int port;
+
+    private Integer weight;
+
+    public ServiceInstance(
+        String name,
+        String host,
+        int port
+    ) {
+        this.serviceName = name;
+        this.host = host;
+        this.port = port;
+    }
+
+    public String getInstanceKey(){
+        return this.host + ":" + this.port;
+    }
 }

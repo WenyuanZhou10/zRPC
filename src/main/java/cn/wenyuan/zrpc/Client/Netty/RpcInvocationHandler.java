@@ -9,7 +9,6 @@ import cn.wenyuan.zrpc.common.Service.ServiceInstance;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -40,6 +39,15 @@ public class RpcInvocationHandler implements InvocationHandler {
         Method method,
         Object[] args
     ) throws Throwable {
+        // 构建 request
+        RpcRequest request = RpcRequest.builder()
+                                       .requestId(UUID.randomUUID().toString())
+                                       .service(method.getDeclaringClass().getName())
+                                       .methodName(method.getName())
+                                       .params(args)
+                                       .paramsType(method.getParameterTypes())
+                                       .build();
+
         // 跳过 Object 的 toString, hashCode, equals 等方法
         if (Object.class.equals(method.getDeclaringClass())) {
             return method.invoke(this, args);
@@ -48,26 +56,14 @@ public class RpcInvocationHandler implements InvocationHandler {
         String serviceName = serviceInterface.getName();
 
         // 2. 服务发现
-        // TODO:负载均衡，目前暂时默认访问 第一个实例
-        List<ServiceInstance> instances = serviceDiscovery.getInstances(serviceName);
+        ServiceInstance instance = serviceDiscovery.getInstance(serviceName, request);
 
-        if(instances == null){
+        if(instance == null){
             throw new RuntimeException("No provider available for service: " + serviceName);
         }
 
-        ServiceInstance instance = instances.get(0);
-
         // 3.获取RPCClient
         RpcClient client = clientFactory.getOrCreateClient(instance.getHost(), instance.getPort());
-
-        // 1.构建 request
-        RpcRequest request = RpcRequest.builder()
-            .requestId(UUID.randomUUID().toString())
-            .service(method.getDeclaringClass().getName())
-            .methodName(method.getName())
-            .params(args)
-            .paramsType(method.getParameterTypes())
-            .build();
 
         RpcResponse response = client.sendRequest(request);
         if (!response.isSuccess()) {
