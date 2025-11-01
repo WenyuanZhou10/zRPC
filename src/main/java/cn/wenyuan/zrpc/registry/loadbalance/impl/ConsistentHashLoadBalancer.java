@@ -115,5 +115,8 @@ public class ConsistentHashLoadBalancer implements LoadBalancer {
         }
     }
 
-
+    @Override
+    public String getName() {
+        return "consistenthash";
+    }
 }

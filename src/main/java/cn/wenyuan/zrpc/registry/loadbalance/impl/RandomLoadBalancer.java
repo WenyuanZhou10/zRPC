@@ -39,4 +39,9 @@ public class RandomLoadBalancer implements LoadBalancer {
 
         return instance;
     }
+
+    @Override
+    public String getName() {
+        return "random";
+    }
 }

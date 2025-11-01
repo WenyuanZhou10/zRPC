@@ -5,6 +5,7 @@ import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Service.ServiceInstance;
 import cn.wenyuan.zrpc.registry.loadbalance.LoadBalancer;
+import cn.wenyuan.zrpc.registry.loadbalance.LoadBanlancerFactory;
 import cn.wenyuan.zrpc.registry.loadbalance.impl.RandomLoadBalancer;
 import cn.wenyuan.zrpc.registry.loadbalance.impl.RoundRobinLoadBalancer;
 import org.apache.curator.framework.CuratorFramework;
@@ -35,7 +36,7 @@ public class ZKServiceRegistry implements ServiceRegistry , cn.wenyuan.zrpc.Clie
     // ZK 中的根路径
     private static final String ZK_BASE_PATH = "/zrpc/service";
     // 负载均衡策略
-    private final LoadBalancer loadBalancer;
+    private final LoadBalancer loadBalancer = LoadBanlancerFactory.get("consistenthash");
 
     public ZKServiceRegistry(String zkAddress) throws Exception {
         this.client = CuratorFrameworkFactory.builder()
@@ -52,7 +53,6 @@ public class ZKServiceRegistry implements ServiceRegistry , cn.wenyuan.zrpc.Clie
                                                        .serializer(serializer)
                                                        .build();
         this.serviceDiscovery.start();
-        loadBalancer = new RoundRobinLoadBalancer();
     }
 
     @Override

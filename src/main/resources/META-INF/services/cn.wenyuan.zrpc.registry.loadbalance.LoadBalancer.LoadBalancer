@@ -1,0 +1,4 @@
+cn.wenyuan.zrpc.registry.loadbalance.impl.RoundRobinLoadBalancer
+cn.wenyuan.zrpc.registry.loadbalance.impl.ConsistentHashLoadBalancer
+cn.wenyuan.zrpc.registry.loadbalance.impl.RandomLoadBalancer
+cn.wenyuan.zrpc.registry.loadbalance.impl.WeightedLoadBalancer

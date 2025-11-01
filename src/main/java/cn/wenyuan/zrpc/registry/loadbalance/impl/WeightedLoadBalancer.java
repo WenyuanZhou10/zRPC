@@ -71,6 +71,11 @@ public class WeightedLoadBalancer implements LoadBalancer {
         return serviceInstance;
     }
 
+    @Override
+    public String getName() {
+        return "weighted";
+    }
+
     private int getWeight(ServiceInstance instance) {
         Integer weight = instance.getWeight();
         if(weight == null || weight <= 0){

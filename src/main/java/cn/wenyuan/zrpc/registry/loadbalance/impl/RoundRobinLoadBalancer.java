@@ -39,6 +39,11 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
         return instance;
     }
 
+    @Override
+    public String getName() {
+        return "roundrobin";
+    }
+
     private int getNextIndex(int size) {
         int currentVal = index.getAndIncrement();// 返回旧值
         // 防止溢出
