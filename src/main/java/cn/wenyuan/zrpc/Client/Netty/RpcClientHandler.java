@@ -4,7 +4,7 @@ package cn.wenyuan.zrpc.Client.Netty;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -16,13 +16,13 @@ import java.util.concurrent.CompletableFuture;
  * @Date 2025/10/31 00:30
  * @Version 1.0
  */
-
+@Slf4j
 public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
 
-    private final NettyClient nettyClient;
+    private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
 
-    public RpcClientHandler(NettyClient nettyClient) {
-        this.nettyClient = nettyClient;
+    public RpcClientHandler(Map<String, CompletableFuture<RpcResponse>> pendingRequest) {
+        this.pendingRequests = pendingRequest;
     }
 
     @Override
@@ -31,10 +31,21 @@ public class RpcClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
         RpcResponse response
     ) throws Exception {
         String requestId = response.getRequestId();
-        Map<String, CompletableFuture<RpcResponse>> map = nettyClient.getPendingRequests();
-        CompletableFuture<RpcResponse> future = map.get(requestId);
+        CompletableFuture<RpcResponse> future = pendingRequests.remove(requestId);
         if(future != null){
             future.complete(response);
+        } else {
+            log.warn("收到一个未知的响应 (或已超时的请求): RequestId = {}", requestId);
         }
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+
+        pendingRequests.forEach((requestId, future) -> {
+            future.completeExceptionally(new RuntimeException("连接已断开"));
+        });
+        pendingRequests.clear();
+        ctx.channel().close();
     }
 }
