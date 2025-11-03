@@ -6,6 +6,7 @@ import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import cn.wenyuan.zrpc.network.codec.RpcFrameDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageEncoder;
+import cn.wenyuan.zrpc.network.handler.HeartbeatHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -14,6 +15,9 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.serialization.ClassResolver;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.timeout.IdleStateHandler;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName NettyServerInitializer
@@ -60,9 +64,14 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("encoder", new RpcMessageEncoder());
 
         // 入站
+        //    (30s 读空闲, 0s 写空闲, 0s 全空闲) 0s - 表示禁用
+        //    服务端只关心“读”空闲
+        pipeline.addLast("idleStateHandler",
+                         new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
         pipeline.addLast("frameDecoder", new RpcFrameDecoder());
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
 
+        pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 
         // 5. 执行业务，查找服务并执行
         pipeline.addLast("RpcServerHandler", new RpcServerHandler(this.serviceCache));

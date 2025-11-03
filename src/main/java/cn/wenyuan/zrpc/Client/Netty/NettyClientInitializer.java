@@ -5,6 +5,7 @@ import cn.wenyuan.zrpc.common.Message.RpcResponse;
 import cn.wenyuan.zrpc.network.codec.RpcFrameDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageEncoder;
+import cn.wenyuan.zrpc.network.handler.HeartbeatHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -13,6 +14,9 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.serialization.ClassResolver;
 import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.timeout.IdleStateHandler;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName NettyClientInitializer
@@ -66,8 +70,12 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("encoder", new RpcMessageEncoder());
 
         // 入站
-        pipeline.addLast("frameDecoder", new RpcFrameDecoder());
+        //    (0s 读空闲, 10s 写空闲, 0s 全空闲)
+        //    客户端只关心“写”空闲，用于主动发心跳
+        pipeline.addLast("idleStateHandler",
+                         new IdleStateHandler(0, 10, 0, TimeUnit.SECONDS));        pipeline.addLast("frameDecoder", new RpcFrameDecoder());
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
+        pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 
         pipeline.addLast("RpcClientHandler", new RpcClientHandler(nettyClient.getPendingRequests()));
     }

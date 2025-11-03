@@ -3,6 +3,8 @@ package cn.wenyuan.zrpc.serializer.impl;
 
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
+import cn.wenyuan.zrpc.core.HeartbeatRequest;
+import cn.wenyuan.zrpc.core.HeartbeatResponse;
 import cn.wenyuan.zrpc.example.dto.User;
 import cn.wenyuan.zrpc.serializer.Serializer;
 import com.esotericsoftware.kryo.Kryo;
@@ -32,6 +34,9 @@ public class KryoSerializer implements Serializer {
         // 注册 RpcResponse 类
         kryo.register(RpcResponse.class);
         kryo.register(User.class);
+
+        kryo.register(HeartbeatRequest.class);
+        kryo.register(HeartbeatResponse.class);
         // 开启注册（Registration Required），提高安全性，防止反序列化漏洞
         // 设置为 false 可以序列化任何类，但有安全风险且性能稍低
         kryo.setRegistrationRequired(true);
