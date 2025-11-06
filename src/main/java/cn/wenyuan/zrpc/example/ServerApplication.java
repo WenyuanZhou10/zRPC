@@ -26,7 +26,10 @@ public final class ServerApplication {
         localServiceCache.registerService(greetingService);
 
         RpcServer server = new NettyServer(localServiceCache);
-        Runtime.getRuntime().addShutdownHook(new Thread(server::stop, "zrpc-server-shutdown"));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            localServiceCache.unregisterAllServices();
+            server.stop();
+        }));
 
         System.out.println("启动 zRPC Netty Server，端口：" + port);
         server.start(port);

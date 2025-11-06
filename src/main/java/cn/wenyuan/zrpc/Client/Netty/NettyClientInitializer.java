@@ -16,6 +16,8 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -28,10 +30,10 @@ import java.util.concurrent.TimeUnit;
 
 public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final NettyClient nettyClient;
+    private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
 
-    public NettyClientInitializer(NettyClient nettyClient) {
-        this.nettyClient = nettyClient;
+    public NettyClientInitializer(Map<String, CompletableFuture<RpcResponse>> pendingRequests) {
+        this.pendingRequests = pendingRequests;
     }
 
     @Override
@@ -77,6 +79,6 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
         pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 
-        pipeline.addLast("RpcClientHandler", new RpcClientHandler(nettyClient.getPendingRequests()));
+        pipeline.addLast("RpcClientHandler", new RpcClientHandler(this.pendingRequests));
     }
 }

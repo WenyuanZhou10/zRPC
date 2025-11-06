@@ -3,6 +3,7 @@ package cn.wenyuan.zrpc.common.Service;
 
 import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
 import cn.wenyuan.zrpc.Server.ServiceRegister.impl.ZKServiceRegistry;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Date 2025/11/1 01:15
  * @Version 1.0
  */
-
+@Slf4j
 public class LocalServiceCache {
     private Map<String,Object> serviceProvider;
 
@@ -41,5 +42,21 @@ public class LocalServiceCache {
 
     public Object getService(String serviceName){
         return serviceProvider.get(serviceName);
+    }
+
+    public void unregisterAllServices() {
+        for(String serviceName : serviceProvider.keySet()){
+            try {
+                ServiceInstance instance = new ServiceInstance(serviceName, this.host, this.port);
+                this.serviceRegistry.unregister(instance);
+            } catch (Exception e) {
+                log.error("反注册服务 {} 失败", serviceName, e);
+            }
+        }
+        this.serviceProvider.clear();
+
+        if(this.serviceRegistry != null){
+            this.serviceRegistry.close();
+        }
     }
 }

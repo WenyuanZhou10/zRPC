@@ -3,6 +3,7 @@ package cn.wenyuan.zrpc.Client.Netty;
 
 import cn.wenyuan.zrpc.Client.RpcClient;
 import cn.wenyuan.zrpc.Client.ServiceDiscovery.ServiceDiscovery;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Proxy;
 import java.util.Map;
@@ -15,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Date 2025/10/31 01:14
  * @Version 1.0
  */
-
+@Slf4j
 public class RpcProxyFactory {
     // Key: "host:port", Value: 对应的 RpcClient 实例
     private final Map<String, RpcClient> clientCache = new ConcurrentHashMap<>();
@@ -43,7 +44,23 @@ public class RpcProxyFactory {
         });
     }
 
+    public void shutdown(){
+        log.info("开始关闭 RpcProxyFactory ");
 
+        for(RpcClient client : clientCache.values()){
+            client.close();
+        }
+
+        clientCache.clear();
+        log.info("RPCClient 全部已关闭");
+
+        // 关闭服务发现连接
+        if(this.serviceDiscovery != null){
+            this.serviceDiscovery.close();
+        }
+
+        log.info("RpcProxyFactory 关闭完成。");
+    }
     /**
      * 当前逻辑是根据 接口类型、host、port 构建一个代理，并进行缓存，后续有相同的服务调用，无需重复构建
      */
