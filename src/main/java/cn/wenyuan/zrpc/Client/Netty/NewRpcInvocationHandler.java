@@ -6,10 +6,12 @@ import cn.wenyuan.zrpc.Client.ServiceDiscovery.ServiceDiscovery;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
 import cn.wenyuan.zrpc.common.Service.ServiceInstance;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @ClassName RpcInvocationHandler
@@ -19,15 +21,16 @@ import java.util.UUID;
  * @Version 1.0
  */
 
-public class RpcInvocationHandler implements InvocationHandler {
+@Slf4j
+public class NewRpcInvocationHandler implements InvocationHandler {
 
     private final Class<?> serviceInterface;
     private final ServiceDiscovery serviceDiscovery;
     private final RpcProxyFactory clientFactory; // 用来获取 RpcClient 连接
 
-    public RpcInvocationHandler(Class<?> serviceInterface,
-                                ServiceDiscovery serviceDiscovery,
-                                RpcProxyFactory clientFactory) {
+    public NewRpcInvocationHandler(Class<?> serviceInterface,
+                                   ServiceDiscovery serviceDiscovery,
+                                   RpcProxyFactory clientFactory) {
         this.serviceInterface = serviceInterface;
         this.serviceDiscovery = serviceDiscovery;
         this.clientFactory = clientFactory;
@@ -66,14 +69,27 @@ public class RpcInvocationHandler implements InvocationHandler {
         // 3.获取RPCClient
         RpcClient client = clientFactory.getOrCreateClient(instance.getHost(), instance.getPort());
 
-        RpcResponse response = client.sendRequest(request);
-        if (!response.isSuccess()) {
-            String message = response.getErrorMessage() != null
-                ? response.getErrorMessage()
-                : "remote invocation failed";
-            throw new RuntimeException(message, response.getError());
-        }
+        CompletableFuture<RpcResponse> future = client.sendRequest(request);
 
-        return response.getResult();
+        Class<?> returnType = method.getReturnType();
+
+        if(CompletableFuture.class.isAssignableFrom(returnType)){
+            log.debug("检测到异步调用，将立即返回 Future...");
+            return future.thenApply(rpcResponse -> {
+                if (!rpcResponse.isSuccess()) {
+                    throw new RuntimeException(rpcResponse.getErrorMessage());
+                }
+                return rpcResponse.getResult();
+            });
+        } else {
+            log.debug("检测到异步调用，将立即返回 Future...");
+
+            RpcResponse response = future.get();
+
+            if(!response.isSuccess()){
+                throw new RuntimeException(response.getErrorMessage());
+            }
+            return response.getResult();
+        }
     }
 }

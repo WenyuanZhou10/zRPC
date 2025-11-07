@@ -3,8 +3,10 @@ package cn.wenyuan.zrpc.Client.Netty;
 
 import cn.wenyuan.zrpc.Client.RpcClient;
 import cn.wenyuan.zrpc.Client.ServiceDiscovery.ServiceDiscovery;
+import cn.wenyuan.zrpc.network.client.RpcTimeoutManager;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +31,7 @@ public class RpcProxyFactory {
      * 实现通过服务发现机制来获取服务代理，无需指定host和port
      */
     public <T>T getProxy(Class<T> clazz){
-        RpcInvocationHandler handler = new RpcInvocationHandler(clazz, serviceDiscovery, this);
+        InvocationHandler handler = new NewRpcInvocationHandler(clazz, serviceDiscovery, this);
         return (T)Proxy.newProxyInstance(clazz.getClassLoader(),
                                           new Class<?>[]{clazz},
                                           handler);
@@ -58,6 +60,9 @@ public class RpcProxyFactory {
         if(this.serviceDiscovery != null){
             this.serviceDiscovery.close();
         }
+
+        log.info("正在关闭 RpcTimeoutManager...");
+        RpcTimeoutManager.stop();
 
         log.info("RpcProxyFactory 关闭完成。");
     }

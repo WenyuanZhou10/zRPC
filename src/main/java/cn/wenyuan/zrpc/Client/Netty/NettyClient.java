@@ -4,6 +4,7 @@ package cn.wenyuan.zrpc.Client.Netty;
 import cn.wenyuan.zrpc.Client.RpcClient;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
+import cn.wenyuan.zrpc.network.client.RpcTimeoutManager;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -127,26 +128,34 @@ public class NettyClient implements RpcClient {
      * @return
      */
     @Override
-    public RpcResponse sendRequest(RpcRequest request) {
+    public CompletableFuture<RpcResponse> sendRequest(RpcRequest request) {
+        // 检查连接状态
         if(isClosed.get()){
             throw new RuntimeException("客户端已关闭");
         }
         final Channel currentChannel = this.channel;
         if(currentChannel == null || !currentChannel.isActive()){
-            throw new RuntimeException("链接不可用，正在重连！");
+            throw new RuntimeException("连接不可用，正在重连！");
         }
 
         CompletableFuture<RpcResponse> future = new CompletableFuture<>();
         pendingRequests.put(request.getRequestId(), future);
-        try {
-            channel.writeAndFlush(request);
-            RpcResponse response = future.get(10, TimeUnit.SECONDS);
-            return response;
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
-        } finally {
+        // 超时的兜底
+        RpcTimeoutManager.scheduleTimeout(request.getRequestId(), future, request.getTimeoutMillis());
+        // 正常完成时清理 pendingRequests 或由其他兜底所触发的清理
+        future.whenComplete((res, ex) -> {
             pendingRequests.remove(request.getRequestId());
-        }
+        });
+
+        // 异步发送
+        currentChannel.writeAndFlush(request).addListener(f -> {
+            // 发送失败的兜底
+            if(!f.isSuccess()){
+                future.completeExceptionally(f.cause());// 触发 future.whenComplete 方法
+            }
+        });
+
+        return future;
     }
 
     public CompletableFuture<RpcResponse> sendRequestAsync(RpcRequest request){

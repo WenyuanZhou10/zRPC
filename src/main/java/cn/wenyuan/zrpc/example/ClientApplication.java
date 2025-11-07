@@ -4,8 +4,11 @@ import cn.wenyuan.zrpc.Client.Netty.RpcProxyFactory;
 import cn.wenyuan.zrpc.Client.ServiceDiscovery.ServiceDiscovery;
 import cn.wenyuan.zrpc.Server.ServiceRegister.impl.ZKServiceRegistry;
 import cn.wenyuan.zrpc.example.api.GreetingService;
+import cn.wenyuan.zrpc.example.api.GreetingServiceAsync;
 import cn.wenyuan.zrpc.example.dto.User;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public final class ClientApplication {
@@ -18,18 +21,32 @@ public final class ClientApplication {
         RpcProxyFactory factory = new RpcProxyFactory(serviceDiscovery);
         GreetingService greetingService = factory.getProxy(GreetingService.class);
 
+        GreetingServiceAsync greetingServiceAsync = factory.getProxy(GreetingServiceAsync.class);
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.warn("JVM 正在关闭，开始执行 RPC 优雅停机...");
             factory.shutdown();
             log.warn("RPC 优雅停机完成。");
         }));
 
-        for(int i = 0; i < 10; i++){
-            User user = new User(1L, "zRPC Demo");
-            String greeting = greetingService.greet(user);
-            int sum = greetingService.sum(7, 5);
-            System.out.println("调用 greet 返回: " + greeting);
-            System.out.println("调用 sum 返回: " + sum);
-        }
+        User user = new User(1L, "zRPC Demo");
+
+        CompletableFuture<String> future = greetingServiceAsync.greet(user);
+        future.thenAccept(s -> {
+            log.info("异步调用成功,结果：{}", s);
+        }).exceptionally(ex -> {
+            log.error("异步调用失败");
+            return null;
+        });
+        log.info("异步调用已发起，主线程继续执行");
+
+
+//        for(int i = 0; i < 10; i++){
+//            User user = new User(1L, "zRPC Demo");
+//            String greeting = greetingService.greet(user);
+//            int sum = greetingService.sum(7, 5);
+//            System.out.println("调用 greet 返回: " + greeting);
+//            System.out.println("调用 sum 返回: " + sum);
+//        }
     }
 }
