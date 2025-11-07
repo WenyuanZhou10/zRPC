@@ -42,25 +42,34 @@ public class NewRpcInvocationHandler implements InvocationHandler {
         Method method,
         Object[] args
     ) throws Throwable {
+        // 跳过 Object 的 toString, hashCode, equals 等方法
+        if (Object.class.equals(method.getDeclaringClass())) {
+            return method.invoke(this, args);
+        }
+        // 1. 获取服务名 (例如 "com.example.UserService")
+        String proxyInterfaceName = serviceInterface.getName();
+
+        String serviceName;
+
+        if (proxyInterfaceName.endsWith("Async")) {
+            serviceName = proxyInterfaceName.substring(0, proxyInterfaceName.length() - 5);
+        } else {
+            serviceName = proxyInterfaceName;
+        }
+
         // 构建 request
         RpcRequest request = RpcRequest.builder()
                                        .requestId(UUID.randomUUID().toString())
-                                       .service(method.getDeclaringClass().getName())
+                                       .service(serviceName)
                                        .methodName(method.getName())
                                        .params(args)
                                        .paramsType(method.getParameterTypes())
                                        .timeoutMillis(5000)
                                        .build();
 
-        // 跳过 Object 的 toString, hashCode, equals 等方法
-        if (Object.class.equals(method.getDeclaringClass())) {
-            return method.invoke(this, args);
-        }
-        // 1. 获取服务名 (例如 "com.example.UserService")
-        String serviceName = serviceInterface.getName();
-
         // 2. 服务发现
         ServiceInstance instance = serviceDiscovery.getInstance(serviceName, request);
+
 
         if(instance == null){
             throw new RuntimeException("No provider available for service: " + serviceName);

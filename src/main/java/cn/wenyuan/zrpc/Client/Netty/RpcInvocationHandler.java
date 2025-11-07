@@ -10,6 +10,7 @@ import cn.wenyuan.zrpc.common.Service.ServiceInstance;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @ClassName RpcInvocationHandler
@@ -66,13 +67,8 @@ public class RpcInvocationHandler implements InvocationHandler {
         // 3.获取RPCClient
         RpcClient client = clientFactory.getOrCreateClient(instance.getHost(), instance.getPort());
 
-        RpcResponse response = client.sendRequest(request);
-        if (!response.isSuccess()) {
-            String message = response.getErrorMessage() != null
-                ? response.getErrorMessage()
-                : "remote invocation failed";
-            throw new RuntimeException(message, response.getError());
-        }
+        CompletableFuture<RpcResponse> future = client.sendRequest(request);
+        RpcResponse response = future.get();
 
         return response.getResult();
     }

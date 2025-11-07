@@ -27,7 +27,9 @@ public class RpcMessageEncoder extends MessageToByteEncoder<Object> {
         Object msg,
         ByteBuf out
     ) throws Exception {
-        if(!(msg instanceof RpcRequest || msg instanceof RpcResponse)){
+        if(!(msg instanceof RpcRequest || msg instanceof RpcResponse
+             || msg instanceof cn.wenyuan.zrpc.core.HeartbeatRequest
+             || msg instanceof cn.wenyuan.zrpc.core.HeartbeatResponse)){
             log.warn("非法的消息类型被请求编码: {}", msg.getClass().getName());
             // ctx.write(msg); // 传给下一个 handler
             return; // 或者直接丢弃

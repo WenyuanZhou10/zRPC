@@ -5,6 +5,7 @@ import cn.wenyuan.zrpc.common.Message.RpcResponse;
 import cn.wenyuan.zrpc.network.codec.RpcFrameDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageEncoder;
+import cn.wenyuan.zrpc.network.config.HeartbeatConfig;
 import cn.wenyuan.zrpc.network.handler.HeartbeatHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -19,6 +20,7 @@ import io.netty.handler.timeout.IdleStateHandler;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @ClassName NettyClientInitializer
@@ -28,6 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @Version 1.0
  */
 
+@Slf4j
 public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
 
     private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
@@ -71,11 +74,13 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
         // 出站
         pipeline.addLast("encoder", new RpcMessageEncoder());
 
-        // 入站
-        //    (0s 读空闲, 10s 写空闲, 0s 全空闲)
-        //    客户端只关心“写”空闲，用于主动发心跳
+        // 入站：客户端只关心写空闲，用于主动发送心跳
+        int clientWriteIdleSeconds = HeartbeatConfig.clientWriteIdleSeconds();
+        log.info("Configuring client channel {} with write idle timeout {}s",
+                 channel.id(), clientWriteIdleSeconds);
         pipeline.addLast("idleStateHandler",
-                         new IdleStateHandler(0, 10, 0, TimeUnit.SECONDS));        pipeline.addLast("frameDecoder", new RpcFrameDecoder());
+                         new IdleStateHandler(0, clientWriteIdleSeconds, 0, TimeUnit.SECONDS));
+        pipeline.addLast("frameDecoder", new RpcFrameDecoder());
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
         pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 

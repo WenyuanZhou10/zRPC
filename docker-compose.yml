@@ -1,5 +1,7 @@
 version: '3.8' # 指定 compose 文件版本
 
+
+# docker-compose up -d
 services:
   # 这是你的 Zookeeper 服务
   zookeeper:

@@ -31,26 +31,29 @@ public class HeartbeatHandler extends ChannelInboundHandlerAdapter {
         ChannelHandlerContext ctx,
         Object evt
     ) throws Exception {
-        if(evt instanceof IdleStateEvent e){
-            if(e.state() == IdleState.WRITER_IDLE){
-                // 客户端逻辑
-                // 写空闲时，发送 ping
-                log.debug("Writer idle, sending heartbeat ping to {}...",
-                          ctx.channel().remoteAddress());
-                // 发送 Ping 包
-                ctx.writeAndFlush(new HeartbeatRequest());
-            } else if (e.state() == IdleState.READER_IDLE){
-                // 服务端逻辑
-                // 读空闲，关闭连接
-                log.warn("Reader idle for 30s, closing connection to {}",
+        if (evt instanceof IdleStateEvent e) {
+            if (e.state() == IdleState.WRITER_IDLE) {
+                // 客户端逻辑：写空闲时发送 ping
+                log.info("Writer idle detected, sending heartbeat ping to {}",
                          ctx.channel().remoteAddress());
-                // 关闭连接
+                ctx.writeAndFlush(new HeartbeatRequest())
+                   .addListener(future -> {
+                       if (!future.isSuccess()) {
+                           log.warn("Failed to send heartbeat ping to {}",
+                                    ctx.channel().remoteAddress(), future.cause());
+                       }
+                   });
+            } else if (e.state() == IdleState.READER_IDLE) {
+                // 服务端逻辑：读空闲时关闭连接
+                log.warn("Reader idle detected, closing connection to {}",
+                         ctx.channel().remoteAddress());
                 ctx.channel().close();
             } else {
-                // 当前不是空闲时间所触发
                 super.userEventTriggered(ctx, evt);
             }
+            return;
         }
+        super.userEventTriggered(ctx, evt);
     }
 
     /**
@@ -61,20 +64,20 @@ public class HeartbeatHandler extends ChannelInboundHandlerAdapter {
         ChannelHandlerContext ctx,
         Object msg
     ) throws Exception {
-        if(msg instanceof HeartbeatRequest){
+        if (msg instanceof HeartbeatRequest) {
             // 服务端
-            log.debug("Received heartbeat ping from {}", ctx.channel().remoteAddress());
+            log.info("Received heartbeat ping from {}", ctx.channel().remoteAddress());
             // 回复 pong
-            ctx.writeAndFlush(new HeartbeatRequest());
+            ctx.writeAndFlush(new HeartbeatResponse());
             ReferenceCountUtil.release(msg);
-        } else if (msg instanceof HeartbeatResponse){
+            return;
+        } else if (msg instanceof HeartbeatResponse) {
             // 客户端收到 pong
-            log.debug("Received heartbeat pong from {}", ctx.channel().remoteAddress());
+            log.info("Received heartbeat pong from {}", ctx.channel().remoteAddress());
             ReferenceCountUtil.release(msg);
-        } else {
-            ctx.fireChannelRead(msg);
+            return;
         }
-        super.channelRead(ctx, msg);
+        ctx.fireChannelRead(msg);
     }
 
     @Override

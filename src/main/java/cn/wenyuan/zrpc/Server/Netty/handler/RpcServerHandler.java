@@ -7,6 +7,7 @@ import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
 
@@ -17,7 +18,7 @@ import java.lang.reflect.Method;
  * @Date 2025/10/31 10:17
  * @Version 1.0
  */
-
+@Slf4j
 public class RpcServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
 
     @Getter
@@ -42,7 +43,7 @@ public class RpcServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
                     request.getMethodName(),
                     request.getParamsType()
             );
-
+            log.info("获取消息：{}", request);
             Object result = method.invoke(service, request.getParams());
             response.setSuccess(true);
             response.setResult(result);

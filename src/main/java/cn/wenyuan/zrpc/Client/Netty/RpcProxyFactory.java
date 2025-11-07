@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName RpcProxyFactory
@@ -42,6 +43,9 @@ public class RpcProxyFactory {
         return clientCache.computeIfAbsent(key, k -> {
             RpcClient client = new NettyClient(host, port);
             client.connect();
+            if (client instanceof NettyClient nettyClient) {
+                nettyClient.awaitFirstConnection(5, TimeUnit.SECONDS);
+            }
             return client;
         });
     }

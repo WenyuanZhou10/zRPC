@@ -35,7 +35,7 @@ public final class ClientApplication {
         future.thenAccept(s -> {
             log.info("异步调用成功,结果：{}", s);
         }).exceptionally(ex -> {
-            log.error("异步调用失败");
+            log.error("异步调用失败，{}",ex.getMessage());
             return null;
         });
         log.info("异步调用已发起，主线程继续执行");

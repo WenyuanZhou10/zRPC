@@ -1,11 +1,11 @@
 package cn.wenyuan.zrpc.Server.Netty.nettyInitializer;
 
 import cn.wenyuan.zrpc.Server.Netty.handler.RpcServerHandler;
-import cn.wenyuan.zrpc.Server.ServiceRegister.ServiceRegistry;
 import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import cn.wenyuan.zrpc.network.codec.RpcFrameDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageDecoder;
 import cn.wenyuan.zrpc.network.codec.RpcMessageEncoder;
+import cn.wenyuan.zrpc.network.config.HeartbeatConfig;
 import cn.wenyuan.zrpc.network.handler.HeartbeatHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -18,6 +18,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @ClassName NettyServerInitializer
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @Version 1.0
  */
 
+@Slf4j
 public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private final LocalServiceCache serviceCache;
@@ -63,11 +65,13 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
         // 出站
         pipeline.addLast("encoder", new RpcMessageEncoder());
 
-        // 入站
-        //    (30s 读空闲, 0s 写空闲, 0s 全空闲) 0s - 表示禁用
-        //    服务端只关心“读”空闲
+        int serverReadIdleSeconds = HeartbeatConfig.serverReadIdleSeconds();
+        log.info("Configuring server channel {} with read idle timeout {}s",
+                 channel.remoteAddress(), serverReadIdleSeconds);
+
+        // 入站：只关心读空闲
         pipeline.addLast("idleStateHandler",
-                         new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS));
+                         new IdleStateHandler(serverReadIdleSeconds, 0, 0, TimeUnit.SECONDS));
         pipeline.addLast("frameDecoder", new RpcFrameDecoder());
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
 

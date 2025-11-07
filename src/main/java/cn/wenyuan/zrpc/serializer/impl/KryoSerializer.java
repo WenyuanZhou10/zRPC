@@ -10,8 +10,6 @@ import cn.wenyuan.zrpc.serializer.Serializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import org.checkerframework.checker.units.qual.K;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
@@ -29,14 +27,16 @@ public class KryoSerializer implements Serializer {
 
     private final ThreadLocal<Kryo> kryoThreadLocal = ThreadLocal.withInitial(() ->{
         Kryo kryo = new Kryo();
-        // 注册 RpcRequest 类
         kryo.register(RpcRequest.class);
-        // 注册 RpcResponse 类
         kryo.register(RpcResponse.class);
         kryo.register(User.class);
-
         kryo.register(HeartbeatRequest.class);
         kryo.register(HeartbeatResponse.class);
+        // 请求里包含方法签名信息，需要显式注册 Class 及其数组类型
+        kryo.register(Class.class);
+        kryo.register(Class[].class);
+        // 方法参数会以 Object[] 的形式承载
+        kryo.register(Object[].class);
         // 开启注册（Registration Required），提高安全性，防止反序列化漏洞
         // 设置为 false 可以序列化任何类，但有安全风险且性能稍低
         kryo.setRegistrationRequired(true);
@@ -53,7 +53,7 @@ public class KryoSerializer implements Serializer {
         try(ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             Output output = new Output(byteArrayOutputStream)){
 
-            kryo.writeClassAndObject(output, RpcRequest.class);
+            kryo.writeClassAndObject(output, obj);
 
             output.flush();
             return byteArrayOutputStream.toByteArray();

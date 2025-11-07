@@ -37,6 +37,7 @@ public class NettyClient implements RpcClient {
 
     private final AtomicBoolean isConnecting = new AtomicBoolean(false);
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
+    private final CountDownLatch firstConnectionLatch = new CountDownLatch(1);
 
     public NettyClient(
         String host,
@@ -64,6 +65,7 @@ public class NettyClient implements RpcClient {
                 log.info("zRPC 客户端成功连接到 {}:{}", host, port);
 
                 this.channel = future.channel();
+                firstConnectionLatch.countDown();
 
                 // 添加“关闭”监听器、Channel 断开时，会被触发
                 // 在 Lambda 内部，我们明确知道 'future' 就是 'closeFuture'
@@ -135,7 +137,7 @@ public class NettyClient implements RpcClient {
         }
         final Channel currentChannel = this.channel;
         if(currentChannel == null || !currentChannel.isActive()){
-            throw new RuntimeException("连接不可用，正在重连！");
+            log.error("连接不可用，正在重连！");
         }
 
         CompletableFuture<RpcResponse> future = new CompletableFuture<>();
@@ -166,5 +168,19 @@ public class NettyClient implements RpcClient {
         pendingRequests.put(request.getRequestId(), future);
         channel.writeAndFlush(request);
         return future;
+    }
+
+    void awaitFirstConnection(long timeout, TimeUnit unit) {
+        try {
+            if (!firstConnectionLatch.await(timeout, unit)) {
+                throw new IllegalStateException(String.format(
+                    "在 %d %s 内未能建立到 %s:%d 的连接",
+                    timeout, unit.toString().toLowerCase(), host, port
+                ));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("等待连接时被中断", e);
+        }
     }
 }
