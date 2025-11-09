@@ -2,6 +2,8 @@ package cn.wenyuan.zrpc.Client.Netty;
 
 
 import cn.wenyuan.zrpc.Client.RpcClient;
+import cn.wenyuan.zrpc.common.Context.ContextAwareCompletableFuture;
+import cn.wenyuan.zrpc.common.Context.RpcContext;
 import cn.wenyuan.zrpc.common.Message.RpcRequest;
 import cn.wenyuan.zrpc.common.Message.RpcResponse;
 import cn.wenyuan.zrpc.network.client.RpcTimeoutManager;
@@ -140,12 +142,14 @@ public class NettyClient implements RpcClient {
             log.error("连接不可用，正在重连！");
         }
 
-        CompletableFuture<RpcResponse> future = new CompletableFuture<>();
-        pendingRequests.put(request.getRequestId(), future);
+        CompletableFuture<RpcResponse> delegateFuture = new CompletableFuture<>();
+        ContextAwareCompletableFuture<RpcResponse> contextAwareFuture =
+            new ContextAwareCompletableFuture<>(delegateFuture, RpcContext.getAttachments());
+        pendingRequests.put(request.getRequestId(), delegateFuture);
         // 超时的兜底
-        RpcTimeoutManager.scheduleTimeout(request.getRequestId(), future, request.getTimeoutMillis());
+        RpcTimeoutManager.scheduleTimeout(request.getRequestId(), delegateFuture, request.getTimeoutMillis());
         // 正常完成时清理 pendingRequests 或由其他兜底所触发的清理
-        future.whenComplete((res, ex) -> {
+        delegateFuture.whenComplete((res, ex) -> {
             pendingRequests.remove(request.getRequestId());
         });
 
@@ -153,21 +157,23 @@ public class NettyClient implements RpcClient {
         currentChannel.writeAndFlush(request).addListener(f -> {
             // 发送失败的兜底
             if(!f.isSuccess()){
-                future.completeExceptionally(f.cause());// 触发 future.whenComplete 方法
+                delegateFuture.completeExceptionally(f.cause());// 触发 future.whenComplete 方法
             }
         });
 
-        return future;
+        return contextAwareFuture;
     }
 
     public CompletableFuture<RpcResponse> sendRequestAsync(RpcRequest request){
-        CompletableFuture<RpcResponse> future = new CompletableFuture<>();
-        future.whenComplete((res, ex) -> {
+        CompletableFuture<RpcResponse> delegateFuture = new CompletableFuture<>();
+        ContextAwareCompletableFuture<RpcResponse> contextAwareFuture =
+            new ContextAwareCompletableFuture<>(delegateFuture, RpcContext.getAttachments());
+        delegateFuture.whenComplete((res, ex) -> {
             pendingRequests.remove(request.getRequestId());
         });
-        pendingRequests.put(request.getRequestId(), future);
+        pendingRequests.put(request.getRequestId(), delegateFuture);
         channel.writeAndFlush(request);
-        return future;
+        return contextAwareFuture;
     }
 
     void awaitFirstConnection(long timeout, TimeUnit unit) {
