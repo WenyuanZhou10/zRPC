@@ -11,6 +11,8 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,6 +35,7 @@ public class NettyClient implements RpcClient {
 
     private final Bootstrap bootstrap;
     private final EventLoopGroup group;
+    private final EventExecutorGroup businessGroup;
     private volatile Channel channel;
     @Getter
     private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
@@ -47,12 +50,13 @@ public class NettyClient implements RpcClient {
     ) {
         this.port = port;
         this.host = host;
-        this.group = new NioEventLoopGroup();
+        this.businessGroup = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors() * 2);// 2 * CPU 核心线程数
+        this.group = new NioEventLoopGroup(); // 2 * CPU 核心线程数
         this.pendingRequests = new ConcurrentHashMap<>();
         this.bootstrap = new Bootstrap();
         this.bootstrap.group(group)
                       .channel(NioSocketChannel.class)
-                      .handler(new NettyClientInitializer(this.pendingRequests));
+                      .handler(new NettyClientInitializer(this.pendingRequests, this.businessGroup));
     }
 
     public void connect(){
@@ -124,10 +128,13 @@ public class NettyClient implements RpcClient {
         if (group != null) {
             group.shutdownGracefully();
         }
+        if (businessGroup != null){
+            businessGroup.shutdownGracefully();
+        }
     }
 
     /**
-     * 这是一个同步的调用方法，会一直阻塞直到返回
+     * 根据用户请求的返回值来决定当前是同步阻塞获取结果、还是异步直接返回future
      * @param request
      * @return
      */
@@ -161,18 +168,6 @@ public class NettyClient implements RpcClient {
             }
         });
 
-        return contextAwareFuture;
-    }
-
-    public CompletableFuture<RpcResponse> sendRequestAsync(RpcRequest request){
-        CompletableFuture<RpcResponse> delegateFuture = new CompletableFuture<>();
-        ContextAwareCompletableFuture<RpcResponse> contextAwareFuture =
-            new ContextAwareCompletableFuture<>(delegateFuture, RpcContext.getAttachments());
-        delegateFuture.whenComplete((res, ex) -> {
-            pendingRequests.remove(request.getRequestId());
-        });
-        pendingRequests.put(request.getRequestId(), delegateFuture);
-        channel.writeAndFlush(request);
         return contextAwareFuture;
     }
 

@@ -20,6 +20,8 @@ import io.netty.handler.timeout.IdleStateHandler;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,9 +36,13 @@ import lombok.extern.slf4j.Slf4j;
 public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
 
     private final Map<String, CompletableFuture<RpcResponse>> pendingRequests;
+    private final EventExecutorGroup businessGroup;
 
-    public NettyClientInitializer(Map<String, CompletableFuture<RpcResponse>> pendingRequests) {
+    public NettyClientInitializer(Map<String, CompletableFuture<RpcResponse>> pendingRequests,
+                                  EventExecutorGroup businessGroup
+    ) {
         this.pendingRequests = pendingRequests;
+        this.businessGroup = businessGroup;
     }
 
     @Override
@@ -84,6 +90,13 @@ public class NettyClientInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
         pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 
-        pipeline.addLast("RpcClientHandler", new RpcClientHandler(this.pendingRequests));
+        // 将 RpcClientHandler 添加到 "businessGroup" 中
+        // Netty 会保证 RpcClientHandler 的所有事件（如 channelRead0, exceptionCaught）
+        // 都在 businessGroup 的线程中执行，而不是 IO 线程
+        if (businessGroup != null) {
+            pipeline.addLast(businessGroup,"RpcClientHandler", new RpcClientHandler(this.pendingRequests));
+        } else {
+            pipeline.addLast("RpcClientHandler", new RpcClientHandler(this.pendingRequests));
+        }
     }
 }

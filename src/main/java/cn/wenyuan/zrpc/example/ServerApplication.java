@@ -1,10 +1,14 @@
 package cn.wenyuan.zrpc.example;
 
 import cn.wenyuan.zrpc.Server.Netty.NettyServer;
+import cn.wenyuan.zrpc.Server.Netty.config.ServerOptions;
 import cn.wenyuan.zrpc.Server.RpcServer;
 import cn.wenyuan.zrpc.common.Service.LocalServiceCache;
 import cn.wenyuan.zrpc.example.api.GreetingService;
 import cn.wenyuan.zrpc.example.api.impl.GreetingServiceImpl;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 public final class ServerApplication {
 
@@ -25,10 +29,22 @@ public final class ServerApplication {
         GreetingService greetingService = new GreetingServiceImpl();
         localServiceCache.registerService(greetingService);
 
-        RpcServer server = new NettyServer(localServiceCache);
+        // 示例：自定义业务线程池，避免长时间业务逻辑阻塞 Netty I/O 线程
+        EventExecutorGroup bizExecutorGroup = new DefaultEventExecutorGroup(
+                Math.max(4, Runtime.getRuntime().availableProcessors()),
+                new DefaultThreadFactory("zrpc-example-biz")
+        );
+
+        ServerOptions options = ServerOptions.builder()
+                .businessExecutorGroup(bizExecutorGroup)
+                .manageBusinessExecutorLifecycle(false) // 样例中手动关闭
+                .build();
+
+        RpcServer server = new NettyServer(localServiceCache, options);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             localServiceCache.unregisterAllServices();
             server.stop();
+            bizExecutorGroup.shutdownGracefully(); // 手动关闭
         }));
 
         System.out.println("启动 zRPC Netty Server，端口：" + port);

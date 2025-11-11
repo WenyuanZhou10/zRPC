@@ -18,6 +18,7 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.timeout.IdleStateHandler;
 
 import java.util.concurrent.TimeUnit;
+import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -32,9 +33,14 @@ import lombok.extern.slf4j.Slf4j;
 public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private final LocalServiceCache serviceCache;
+    private final EventExecutorGroup businessExecutorGroup;
 
-    public NettyServerInitializer(LocalServiceCache serviceCache) {
+    public NettyServerInitializer(
+        LocalServiceCache serviceCache,
+        EventExecutorGroup businessExecutorGroup
+    ) {
         this.serviceCache = serviceCache;
+        this.businessExecutorGroup = businessExecutorGroup;
     }
 
 
@@ -77,7 +83,11 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
 
         pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
 
-        // 5. 执行业务，查找服务并执行
-        pipeline.addLast("RpcServerHandler", new RpcServerHandler(this.serviceCache));
+        // 5. 执行业务，查找服务并执行；默认跑在用户提供的业务线程池里，避免占用 I/O 线程
+        if (businessExecutorGroup != null) {
+            pipeline.addLast(businessExecutorGroup, "RpcServerHandler", new RpcServerHandler(this.serviceCache));
+        } else {
+            pipeline.addLast("RpcServerHandler", new RpcServerHandler(this.serviceCache));
+        }
     }
 }
