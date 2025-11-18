@@ -50,7 +50,7 @@ public class RateLimiterFactory {
 
     }
 
-    RateLimiter getRateLimiter(String algorithm){
+    public static RateLimiter getRateLimiter(String algorithm){
         return LimiterHolder.LIMITER_MAP.get(algorithm);
     }
 }
