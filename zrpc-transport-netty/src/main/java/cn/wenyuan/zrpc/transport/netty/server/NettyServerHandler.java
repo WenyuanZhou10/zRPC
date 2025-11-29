@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
+import java.util.Map;
 
 /**
  * @ClassName RpcServerHandler
@@ -42,7 +43,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                     request.getMethodName(),
                     request.getParamsType()
             );
-            log.info("获取消息：{}", request);
+            Map<String, String> attachment = request.getHeaders();
+            log.info("获取消息：{}, trace-id : {}", request, attachment.get("traceId"));
             Object result = method.invoke(service, request.getParams());
             response.setSuccess(true);
             response.setResult(result);

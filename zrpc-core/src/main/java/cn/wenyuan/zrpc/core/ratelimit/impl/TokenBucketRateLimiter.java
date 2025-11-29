@@ -25,7 +25,6 @@ public class TokenBucketRateLimiter implements RateLimiter {
 
     private final long capacity;
     private final long qps;
-    private long currentTokens;
     private long lastRefillTimestamp; // 上次补充令牌的时间戳
 
     private final Map<String, BucketState> buckets = new ConcurrentHashMap<>();

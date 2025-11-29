@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -24,6 +25,8 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public class NewRpcInvocationHandler implements InvocationHandler {
+
+    private static final String TRACE_ID_KEY = "traceId";
 
     private final Class<?> serviceInterface;
     private final ServiceDiscovery serviceDiscovery;
@@ -58,6 +61,16 @@ public class NewRpcInvocationHandler implements InvocationHandler {
             serviceName = proxyInterfaceName;
         }
 
+        Map<String, String> attachments = RpcContext.getAttachments();
+        boolean traceIdGenerated = false;
+        String traceId = attachments.get(TRACE_ID_KEY);
+        if (traceId == null || traceId.isEmpty()) {
+            traceIdGenerated = true;
+            traceId = UUID.randomUUID().toString();
+            RpcContext.setAttachment(TRACE_ID_KEY, traceId);
+            attachments = RpcContext.getAttachments();
+        }
+
         // 构建 request
         RpcRequest request = RpcRequest.builder()
                                        .requestId(UUID.randomUUID().toString())
@@ -66,6 +79,7 @@ public class NewRpcInvocationHandler implements InvocationHandler {
                                        .params(args)
                                        .paramsType(method.getParameterTypes())
                                        .timeoutMillis(5000)
+                                       .headers(attachments)
                                        .build();
 
         // 2. 服务发现
@@ -91,19 +105,25 @@ public class NewRpcInvocationHandler implements InvocationHandler {
 
         Class<?> returnType = method.getReturnType();
 
-        if (RpcContext.isAsyncCall()) { // 客户端开启异步，接口返回值不是 CompletableFuture
-            log.debug("检测到线程处于 RpcContext 异步模式，返回原始 Future。");
-            RpcContext.publishAsyncFuture(resultFuture);
-            return defaultValue(returnType);
-        }
+        try {
+            if (RpcContext.isAsyncCall()) { // 客户端开启异步，接口返回值不是 CompletableFuture
+                log.debug("检测到线程处于 RpcContext 异步模式，返回原始 Future。");
+                RpcContext.publishAsyncFuture(resultFuture);
+                return defaultValue(returnType);
+            }
 
-        if(CompletableFuture.class.isAssignableFrom(returnType)){ // 接口返回的是 CompletableFuture 或其子类
-            log.debug("返回 CompletableFuture 以供调用方自行处理。");
-            return resultFuture;
-        }
+            if(CompletableFuture.class.isAssignableFrom(returnType)){ // 接口返回的是 CompletableFuture 或其子类
+                log.debug("返回 CompletableFuture 以供调用方自行处理。");
+                return resultFuture;
+            }
 
-        log.debug("同步调用，将阻塞等待 RPC 响应。");
-        return resultFuture.get();
+            log.debug("同步调用，将阻塞等待 RPC 响应。");
+            return resultFuture.get();
+        } finally {
+            if (traceIdGenerated) {
+                RpcContext.setAttachment(TRACE_ID_KEY, null);
+            }
+        }
     }
 
     private Object defaultValue(Class<?> returnType) {
