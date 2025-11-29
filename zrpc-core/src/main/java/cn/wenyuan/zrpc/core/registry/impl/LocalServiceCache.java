@@ -1,12 +1,13 @@
 package cn.wenyuan.zrpc.core.registry.impl;
 
 
-import cn.wenyuan.zrpc.core.registry.ServiceRegistry;
 import cn.wenyuan.zrpc.common.service.ServiceInstance;
-import lombok.extern.slf4j.Slf4j;
-
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
+import cn.wenyuan.zrpc.core.registry.ServiceRegistry;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @ClassName LocalServiceCache
@@ -27,7 +28,11 @@ public class LocalServiceCache {
     public LocalServiceCache(String host, int port) throws Exception {
         this.host = host;
         this.port = port;
-        this.serviceRegistry = new ZKServiceRegistry("127.0.0.1:2182");
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        String zkAddress = config != null && config.getRegistry() != null
+            ? config.getRegistry().getAddress()
+            : null;
+        this.serviceRegistry = new ZKServiceRegistry(zkAddress);
         this.serviceProvider = new ConcurrentHashMap<>();
     }
 

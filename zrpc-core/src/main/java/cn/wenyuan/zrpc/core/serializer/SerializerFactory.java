@@ -1,11 +1,12 @@
 package cn.wenyuan.zrpc.core.serializer;
 
 
-import lombok.extern.slf4j.Slf4j;
-
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @ClassName SerializerFactory
@@ -34,10 +35,11 @@ public class SerializerFactory {
             log.info("成功加载序列化器: code={}, class={}", code, serializer.getClass().getName());
         }
 
-        // 将 Kryo (code 0x01) 设为默认
-        DEFAULT_SERIALIZER = SERIALIZER_CACHE.get((byte) 0x01);
-        if (DEFAULT_SERIALIZER == null) {
-            log.error("未找到 code 为 0x01 (Kryo) 的默认序列化器！");
+        DEFAULT_SERIALIZER = determineDefaultSerializer();
+        if (DEFAULT_SERIALIZER != null) {
+            log.info("默认序列化器加载完成: {}", DEFAULT_SERIALIZER.getClass().getName());
+        } else {
+            log.error("未能确定默认序列化器，检查 SPI 配置是否正确！");
         }
     }
 
@@ -58,5 +60,32 @@ public class SerializerFactory {
      */
     public static Serializer getDefault() {
         return DEFAULT_SERIALIZER;
+    }
+
+    private static Serializer determineDefaultSerializer() {
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        byte desiredCode = resolveDefaultSerializerCode(config != null ? config.getSerialization() : null);
+        Serializer serializer = SERIALIZER_CACHE.get(desiredCode);
+        if (serializer != null) {
+            return serializer;
+        }
+        log.warn("配置的默认序列化器 code [{}] 未找到，尝试回退到 Kryo。", desiredCode);
+        Serializer fallback = SERIALIZER_CACHE.get(SerializerType.KRYO.getCode());
+        if (fallback != null) {
+            return fallback;
+        }
+        return SERIALIZER_CACHE.values().stream().findFirst().orElse(null);
+    }
+
+    private static byte resolveDefaultSerializerCode(ZrpcConfig.SerializationConfig serializationConfig) {
+        if (serializationConfig == null) {
+            return SerializerType.KRYO.getCode();
+        }
+        if (serializationConfig.getDefaultCode() != null) {
+            return serializationConfig.getDefaultCode();
+        }
+        return SerializerType.fromName(serializationConfig.getDefaultType())
+            .map(SerializerType::getCode)
+            .orElse(SerializerType.KRYO.getCode());
     }
 }

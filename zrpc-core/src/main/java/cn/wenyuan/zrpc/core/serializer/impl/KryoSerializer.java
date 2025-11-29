@@ -12,10 +12,8 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.ServiceLoader;
+import java.util.*;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -102,6 +100,8 @@ public class KryoSerializer implements Serializer {
                 registrars.add(registrar);
                 log.info("Loaded Kryo registrar: {}", registrar.getClass().getName());
             }
+            // 严格保证注册顺序和ID
+            registrars.sort(Comparator.comparing(o -> o.getClass().getName()));
         } catch (Throwable ex) {
             log.warn("加载 KryoRegistrar SPI 失败", ex);
         }

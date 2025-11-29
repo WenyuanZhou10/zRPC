@@ -1,11 +1,13 @@
 package cn.wenyuan.zrpc.demo;
 
-import cn.wenyuan.zrpc.server.factory.ServerFactory;
-import cn.wenyuan.zrpc.core.server.ServerOptions;
-import cn.wenyuan.zrpc.core.server.RpcServer;
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.registry.impl.LocalServiceCache;
+import cn.wenyuan.zrpc.core.server.RpcServer;
+import cn.wenyuan.zrpc.core.server.ServerOptions;
 import cn.wenyuan.zrpc.demo.api.GreetingService;
 import cn.wenyuan.zrpc.demo.api.impl.GreetingServiceImpl;
+import cn.wenyuan.zrpc.server.factory.ServerFactory;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -16,16 +18,18 @@ public final class ServerApplication {
     }
 
     public static void main(String[] args) throws Exception {
-        int port = 9999;
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        String host = config.getServer().getHost();
+        int port = config.getServer().getPort();
         if (args.length > 0) {
             try {
                 port = Integer.parseInt(args[0]);
             } catch (NumberFormatException ignore) {
-                System.out.println("无效端口，使用默认端口 9999");
+                System.out.println("无效端口，使用默认端口 " + port);
             }
         }
 
-        LocalServiceCache localServiceCache = new LocalServiceCache("127.0.0.1", port);
+        LocalServiceCache localServiceCache = new LocalServiceCache(host, port);
         GreetingService greetingService = new GreetingServiceImpl();
         localServiceCache.registerService(greetingService);
 
@@ -47,7 +51,7 @@ public final class ServerApplication {
             bizExecutorGroup.shutdownGracefully(); // 手动关闭
         }));
 
-        System.out.println("启动 zRPC Netty Server，端口：" + port);
+        System.out.println("启动 zRPC Netty Server，地址：" + host + ":" + port);
         server.start(port);
     }
 }

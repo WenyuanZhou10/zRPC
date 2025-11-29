@@ -3,18 +3,19 @@ package cn.wenyuan.zrpc.core.registry.impl;
 
 import cn.wenyuan.zrpc.common.message.RpcRequest;
 import cn.wenyuan.zrpc.common.service.ServiceInstance;
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBalancer;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBanlancerFactory;
 import cn.wenyuan.zrpc.core.registry.ServiceRegistry;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.details.JsonInstanceSerializer;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * @ClassName ZKServiceRegister
@@ -33,11 +34,20 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
     // ZK 中的根路径
     private static final String ZK_BASE_PATH = "/zrpc/service";
     // 负载均衡策略
-    private final LoadBalancer loadBalancer = LoadBanlancerFactory.get("consistenthash");
+    private final LoadBalancer loadBalancer;
 
     public ZKServiceRegistry(String zkAddress) throws Exception {
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        String connectString = zkAddress;
+        if ((connectString == null || connectString.isBlank()) && config != null
+            && config.getRegistry() != null) {
+            connectString = config.getRegistry().getAddress();
+        }
+        if (connectString == null || connectString.isBlank()) {
+            throw new IllegalArgumentException("ZK 地址不能为空");
+        }
         this.client = CuratorFrameworkFactory.builder()
-            .connectString("127.0.0.1:21888")
+            .connectString(connectString)
             .retryPolicy(new ExponentialBackoffRetry(1000, 3))
             .build();
         this.client.start();
@@ -50,6 +60,10 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
                                                        .serializer(serializer)
                                                        .build();
         this.serviceDiscovery.start();
+        String strategy = config != null && config.getLoadBalance() != null
+            ? config.getLoadBalance().getStrategy()
+            : null;
+        this.loadBalancer = LoadBanlancerFactory.get(strategy);
     }
 
     @Override

@@ -1,0 +1,13 @@
+zrpc:
+  registry:
+    type: zookeeper
+    address: 127.0.0.1:21888
+  serialization:
+    default-type: protobuf
+  load-balance:
+    strategy: consistenthash
+  server:
+    host: 127.0.0.1
+    port: 9999
+  client:
+    request-timeout-millis: 5000

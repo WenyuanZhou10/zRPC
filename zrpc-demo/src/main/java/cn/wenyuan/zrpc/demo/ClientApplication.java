@@ -1,14 +1,15 @@
 package cn.wenyuan.zrpc.demo;
 
 import cn.wenyuan.zrpc.client.proxy.RpcProxyFactory;
+import cn.wenyuan.zrpc.common.context.RpcContext;
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.registry.ServiceDiscovery;
 import cn.wenyuan.zrpc.core.registry.impl.ZKServiceRegistry;
-import cn.wenyuan.zrpc.common.context.RpcContext;
 import cn.wenyuan.zrpc.demo.api.GreetingService;
 import cn.wenyuan.zrpc.demo.dto.User;
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.concurrent.CompletableFuture;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class ClientApplication {
@@ -17,7 +18,9 @@ public final class ClientApplication {
     }
 
     public static void main(String[] args) throws Exception {
-        ServiceDiscovery serviceDiscovery = new ZKServiceRegistry("127.0.0.1:2182");
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        String registryAddress = config.getRegistry().getAddress();
+        ServiceDiscovery serviceDiscovery = new ZKServiceRegistry(registryAddress);
         RpcProxyFactory factory = new RpcProxyFactory(serviceDiscovery);
         GreetingService greetingService = factory.getProxy(GreetingService.class);
 
