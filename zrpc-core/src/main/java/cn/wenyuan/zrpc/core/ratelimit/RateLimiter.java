@@ -2,7 +2,7 @@ package cn.wenyuan.zrpc.core.ratelimit;
 
 public interface RateLimiter {
 
-    boolean tryAcquire();
+    boolean tryAcquire(String key);
 
     String getAlgorithmName();
 }

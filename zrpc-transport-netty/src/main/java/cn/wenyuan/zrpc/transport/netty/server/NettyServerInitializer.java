@@ -6,6 +6,7 @@ import cn.wenyuan.zrpc.transport.netty.codec.RpcMessageDecoder;
 import cn.wenyuan.zrpc.transport.netty.codec.RpcMessageEncoder;
 import cn.wenyuan.zrpc.transport.netty.config.HeartbeatConfig;
 import cn.wenyuan.zrpc.transport.netty.handler.HeartbeatHandler;
+import cn.wenyuan.zrpc.transport.netty.handler.ServerFilterHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -76,6 +77,8 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("messageDecoder", new RpcMessageDecoder());
 
         pipeline.addLast("heartbeatHandler", HeartbeatHandler.INSTANCE);
+
+        pipeline.addLast("filterHandler", ServerFilterHandler.INSTANCE);
 
         // 5. 执行业务，查找服务并执行；默认跑在用户提供的业务线程池里，避免占用 I/O 线程
         if (businessExecutorGroup != null) {
