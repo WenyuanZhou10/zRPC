@@ -13,7 +13,8 @@ import java.util.Optional;
 @Getter
 public enum SerializerType {
     KRYO((byte) 0x01, "kryo"),
-    PROTOBUF((byte) 0x02, "protobuf");
+    PROTOBUF((byte) 0x02, "protobuf"),
+    HESSIAN((byte) 0x03, "hessian");
 
     private final byte code;
     private final String configName;

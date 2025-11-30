@@ -1,2 +1,3 @@
 cn.wenyuan.zrpc.core.serializer.impl.KryoSerializer
 cn.wenyuan.zrpc.core.serializer.impl.ProtobufSerializer
+cn.wenyuan.zrpc.core.serializer.impl.HessianSerializer
