@@ -1,2 +1,3 @@
 cn.wenyuan.zrpc.core.filter.impl.TraceFilter
 cn.wenyuan.zrpc.core.filter.impl.RateLimiterFilter
+cn.wenyuan.zrpc.core.filter.impl.BulkheadFilter

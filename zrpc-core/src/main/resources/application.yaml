@@ -1,7 +1,0 @@
-zrpc:
-  ratelimit:
-    default_algorithm:
-      token_bucket
-    token_bucket:
-      qps: 10
-      capacity: 100

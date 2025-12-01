@@ -1,7 +1,8 @@
 package cn.wenyuan.zrpc.core.ratelimit.impl;
 
 
-import cn.wenyuan.zrpc.core.config.ConfigService;
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.ratelimit.RateLimiter;
 import org.apache.zookeeper.common.StringUtils;
 
@@ -25,7 +26,6 @@ public class TokenBucketRateLimiter implements RateLimiter {
 
     private final long capacity;
     private final long qps;
-    private long lastRefillTimestamp; // 上次补充令牌的时间戳
 
     private final Map<String, BucketState> buckets = new ConcurrentHashMap<>();
 
@@ -40,8 +40,16 @@ public class TokenBucketRateLimiter implements RateLimiter {
     }
 
     public TokenBucketRateLimiter() {
-        this.capacity = ConfigService.getInt(TOKEN_BUCKET_CAPACITY_KEY, DEFAULT_CAPACITY);
-        this.qps = ConfigService.getInt(TOKEN_BUCKET_QPS_KEY, DEFAULT_QPS);
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        ZrpcConfig.RateLimitConfig rateLimitConfig = config != null ? config.getRateLimit() : null;
+        ZrpcConfig.RateLimitConfig.TokenBucketConfig tokenBucket =
+            rateLimitConfig != null ? rateLimitConfig.getTokenBucket() : null;
+        this.capacity = tokenBucket != null && tokenBucket.getCapacity() != null
+            ? tokenBucket.getCapacity()
+            : DEFAULT_CAPACITY;
+        this.qps = tokenBucket != null && tokenBucket.getQps() != null
+            ? tokenBucket.getQps()
+            : DEFAULT_QPS;
     }
 
     @Override
@@ -75,7 +83,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
         if (qps <= 0) {
             return;
         }
-        double secondsPassed = (now - lastRefillTimestamp) / 1000.0;
+        double secondsPassed = (now - state.lastRefillTimestamp) / 1000.0;
 
         long tokensToAdd = (long) (secondsPassed * qps);
 

@@ -3,7 +3,7 @@ zrpc:
     type: zookeeper
     address: 127.0.0.1:21888
   serialization:
-    default-type: protobuf
+    default-type: hessian
   load-balance:
     strategy: consistenthash
   server:
@@ -11,3 +11,15 @@ zrpc:
     port: 9999
   client:
     request-timeout-millis: 5000
+  ratelimit:
+    default_algorithm: token_bucket
+    token_bucket:
+      qps: 10
+      capacity: 100
+  bulkhead:
+    default:
+      max_concurrent: 1
+    services:
+      "cn.wenyuan.zrpc.demo.api.GreetingService":
+        sum:
+          max_concurrent: 3

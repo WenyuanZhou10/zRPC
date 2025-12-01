@@ -24,6 +24,7 @@ public class RpcRequest implements Serializable {
     private Class<?>[] paramsType;      //参数类型
     private Map<String, String> headers; // 放超时时间、认证信息、序列化方式等
     private Object payload;      // 或 byte[]，视序列化方案而定
-    private int timeoutMillis;      //
-    // getter/setter 略
+    private int timeoutMillis;
+
+    private transient Runnable postProcessor;
 }

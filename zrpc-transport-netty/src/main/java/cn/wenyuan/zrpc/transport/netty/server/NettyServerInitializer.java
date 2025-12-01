@@ -81,10 +81,13 @@ public class NettyServerInitializer extends ChannelInitializer<SocketChannel> {
         pipeline.addLast("filterHandler", ServerFilterHandler.INSTANCE);
 
         // 5. 执行业务，查找服务并执行；默认跑在用户提供的业务线程池里，避免占用 I/O 线程
-        if (businessExecutorGroup != null) {
-            pipeline.addLast(businessExecutorGroup, "RpcServerHandler", new NettyServerHandler(this.serviceCache));
-        } else {
-            pipeline.addLast("RpcServerHandler", new NettyServerHandler(this.serviceCache));
-        }
+//        if (businessExecutorGroup != null) {
+//            log.info("业务线程池处理业务请求");
+//            pipeline.addLast(businessExecutorGroup, "RpcServerHandler", new NettyServerHandler(this.serviceCache));
+//        } else {
+//
+//        }
+
+        pipeline.addLast("RpcServerHandler", new NettyServerHandler(this.serviceCache));
     }
 }

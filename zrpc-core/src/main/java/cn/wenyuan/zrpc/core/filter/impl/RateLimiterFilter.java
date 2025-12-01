@@ -2,9 +2,10 @@ package cn.wenyuan.zrpc.core.filter.impl;
 
 import cn.wenyuan.zrpc.common.message.RpcRequest;
 import cn.wenyuan.zrpc.common.message.RpcResponse;
-import cn.wenyuan.zrpc.core.config.ConfigService;
 import cn.wenyuan.zrpc.core.filter.Filter;
 import cn.wenyuan.zrpc.core.filter.FilterChain;
+import cn.wenyuan.zrpc.core.config.ApplicationConfig;
+import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.ratelimit.RateLimiter;
 import cn.wenyuan.zrpc.core.ratelimit.RateLimiterFactory;
 
@@ -18,14 +19,17 @@ import cn.wenyuan.zrpc.core.ratelimit.RateLimiterFactory;
 
 public class RateLimiterFilter implements Filter {
 
-    private static final String DEFAULT_ALGORITHM_KEY = "zrpc.ratelimit.default_algorithm";
-
     private static final String DEFAULT_ALGORITHM = "token_bucket";
 
     private RateLimiter rateLimiter;
 
     public RateLimiterFilter(){
-        String algorithm = ConfigService.getString(DEFAULT_ALGORITHM_KEY, DEFAULT_ALGORITHM);
+        String algorithm = DEFAULT_ALGORITHM;
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        if (config != null && config.getRateLimit() != null
+            && config.getRateLimit().getDefaultAlgorithm() != null) {
+            algorithm = config.getRateLimit().getDefaultAlgorithm();
+        }
         this.rateLimiter = RateLimiterFactory.getRateLimiter(algorithm);
     }
 
@@ -45,6 +49,8 @@ public class RateLimiterFilter implements Filter {
             response.setError(new RuntimeException(
                     "Request limit exceeded for: " + rateLimitKey
             ));
+            response.setSuccess(false);
+            response.setErrorMessage("Request limit exceeded for: " + rateLimitKey);
         }
     }
 }

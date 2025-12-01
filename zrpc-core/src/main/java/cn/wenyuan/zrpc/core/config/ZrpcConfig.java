@@ -2,58 +2,27 @@ package cn.wenyuan.zrpc.core.config;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.HashMap;
+import java.util.Map;
+import lombok.Data;
 
 /**
  * 承载 application.yml 中 zrpc 节点的配置。
  */
+@Data
 public class ZrpcConfig {
 
     private SerializationConfig serialization = new SerializationConfig();
     private RegistryConfig registry = new RegistryConfig();
     private ServerConfig server = new ServerConfig();
     private ClientConfig client = new ClientConfig();
+    @JsonProperty("load-balance")
     private LoadBalanceConfig loadBalance = new LoadBalanceConfig();
+    @JsonProperty("ratelimit")
+    private RateLimitConfig rateLimit = new RateLimitConfig();
+    private BulkheadConfig bulkhead = new BulkheadConfig();
 
-    public SerializationConfig getSerialization() {
-        return serialization;
-    }
-
-    public void setSerialization(SerializationConfig serialization) {
-        this.serialization = serialization;
-    }
-
-    public RegistryConfig getRegistry() {
-        return registry;
-    }
-
-    public void setRegistry(RegistryConfig registry) {
-        this.registry = registry;
-    }
-
-    public ServerConfig getServer() {
-        return server;
-    }
-
-    public void setServer(ServerConfig server) {
-        this.server = server;
-    }
-
-    public ClientConfig getClient() {
-        return client;
-    }
-
-    public void setClient(ClientConfig client) {
-        this.client = client;
-    }
-
-    public LoadBalanceConfig getLoadBalance() {
-        return loadBalance;
-    }
-
-    public void setLoadBalance(LoadBalanceConfig loadBalance) {
-        this.loadBalance = loadBalance;
-    }
-
+    @Data
     public static class SerializationConfig {
         @JsonProperty("default-type")
         private String defaultType = "kryo";
@@ -61,87 +30,61 @@ public class ZrpcConfig {
         @JsonProperty("default-code")
         private Byte defaultCode;
 
-        public String getDefaultType() {
-            return defaultType;
-        }
-
-        public void setDefaultType(String defaultType) {
-            this.defaultType = defaultType;
-        }
-
-        public Byte getDefaultCode() {
-            return defaultCode;
-        }
-
-        public void setDefaultCode(Byte defaultCode) {
-            this.defaultCode = defaultCode;
-        }
     }
 
+    @Data
     public static class RegistryConfig {
         private String type = "zookeeper";
         private String address = "127.0.0.1:21888";
 
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getAddress() {
-            return address;
-        }
-
-        public void setAddress(String address) {
-            this.address = address;
-        }
     }
 
+    @Data
     public static class ServerConfig {
         private String host = "127.0.0.1";
         private int port = 9999;
 
-        public String getHost() {
-            return host;
-        }
-
-        public void setHost(String host) {
-            this.host = host;
-        }
-
-        public int getPort() {
-            return port;
-        }
-
-        public void setPort(int port) {
-            this.port = port;
-        }
     }
 
+    @Data
     public static class ClientConfig {
         @JsonProperty("request-timeout-millis")
         private int requestTimeoutMillis = 3000;
 
-        public int getRequestTimeoutMillis() {
-            return requestTimeoutMillis;
-        }
-
-        public void setRequestTimeoutMillis(int requestTimeoutMillis) {
-            this.requestTimeoutMillis = requestTimeoutMillis;
-        }
     }
 
+    @Data
     public static class LoadBalanceConfig {
         private String strategy = "roundrobin";
 
-        public String getStrategy() {
-            return strategy;
-        }
+    }
 
-        public void setStrategy(String strategy) {
-            this.strategy = strategy;
+    @Data
+    public static class RateLimitConfig {
+        @JsonProperty("default_algorithm")
+        private String defaultAlgorithm = "token_bucket";
+
+        @JsonProperty("token_bucket")
+        private TokenBucketConfig tokenBucket = new TokenBucketConfig();
+
+        @Data
+        public static class TokenBucketConfig {
+            private Integer qps = 10;
+            private Integer capacity = 10;
         }
+    }
+
+    @Data
+    public static class BulkheadConfig {
+        @JsonProperty("default")
+        private BulkheadRule defaultRule = new BulkheadRule();
+
+        private Map<String, Map<String, BulkheadRule>> services = new HashMap<>();
+    }
+
+    @Data
+    public static class BulkheadRule {
+        @JsonProperty("max_concurrent")
+        private Integer maxConcurrent = 1;
     }
 }
