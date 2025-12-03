@@ -18,8 +18,8 @@ zrpc:
       capacity: 100
   bulkhead:
     default:
-      max_concurrent: 1
+      max_concurrent: 5
     services:
       "cn.wenyuan.zrpc.demo.api.GreetingService":
         sum:
-          max_concurrent: 3
+          max_concurrent: 5

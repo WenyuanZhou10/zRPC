@@ -25,7 +25,7 @@ public class BulkheadFilter implements Filter {
     // KEY: 服务名.方法名 Value: 信号量
     private final Map<String, Semaphore> semaphoreMap = new ConcurrentHashMap<>();
 
-    private static final int DEFAULT_MAX_CONCURRENT = 1;
+    private static final int DEFAULT_MAX_CONCURRENT = 10;
 
     @Override
     public void filter(

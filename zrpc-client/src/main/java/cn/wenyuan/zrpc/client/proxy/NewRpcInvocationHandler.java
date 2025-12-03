@@ -2,6 +2,8 @@ package cn.wenyuan.zrpc.client.proxy;
 
 
 import cn.wenyuan.zrpc.core.client.RpcClient;
+import cn.wenyuan.zrpc.core.filter.client.ClientFilterChain;
+import cn.wenyuan.zrpc.core.filter.client.ClientFilterManager;
 import cn.wenyuan.zrpc.core.registry.ServiceDiscovery;
 import cn.wenyuan.zrpc.common.context.RpcContext;
 import cn.wenyuan.zrpc.common.message.RpcRequest;
@@ -27,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 public class NewRpcInvocationHandler implements InvocationHandler {
 
     private static final String TRACE_ID_KEY = "traceId";
+    private static final ClientFilterManager CLIENT_FILTER_MANAGER = ClientFilterManager.getInstance();
 
     private final Class<?> serviceInterface;
     private final ServiceDiscovery serviceDiscovery;
@@ -93,8 +96,9 @@ public class NewRpcInvocationHandler implements InvocationHandler {
         // 3.获取RPCClient
         RpcClient client = clientFactory.getOrCreateClient(instance.getHost(), instance.getPort());
 
+        ClientFilterChain clientFilterChain = CLIENT_FILTER_MANAGER.buildChain(req -> client.sendRequest(req));
         // 网络层返回的响应结果
-        CompletableFuture<RpcResponse> responseFuture = client.sendRequest(request);
+        CompletableFuture<RpcResponse> responseFuture = clientFilterChain.doFilter(request);
         // responseFuture 的 thenApply 得到的派生 Future
         CompletableFuture<Object> resultFuture = responseFuture.thenApply(rpcResponse -> {
             if (!rpcResponse.isSuccess()) {
