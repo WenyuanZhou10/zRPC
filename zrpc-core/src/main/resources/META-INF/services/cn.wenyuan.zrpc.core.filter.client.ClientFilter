@@ -1,1 +1,3 @@
+cn.wenyuan.zrpc.core.filter.impl.ClientRetryFilter
+cn.wenyuan.zrpc.core.filter.impl.ClientTracingFilter
 cn.wenyuan.zrpc.core.filter.impl.ClientCircuitBreakerFilter

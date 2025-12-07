@@ -1,6 +1,7 @@
 package cn.wenyuan.zrpc.common.service;
 
 
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,12 @@ public class ServiceInstance {
     private int port;
 
     private Integer weight;
+
+    private String version;
+
+    private boolean gray;
+
+    private Map<String, String> metadata;
 
     public ServiceInstance(
         String name,

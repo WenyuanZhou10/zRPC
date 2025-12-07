@@ -1,6 +1,7 @@
 package cn.wenyuan.zrpc.core.filter.impl;
 
 
+import cn.wenyuan.zrpc.common.exception.RpcException;
 import cn.wenyuan.zrpc.common.message.RpcRequest;
 import cn.wenyuan.zrpc.common.message.RpcResponse;
 import cn.wenyuan.zrpc.core.filter.Filter;
@@ -58,7 +59,7 @@ public class BulkheadFilter implements Filter {
             String msg = String.format("服务 [%s] 并发过高，已触发舱壁隔离。", key);
             log.error(msg);
             // 设置异常到响应中 (不要抛出，而是走正常响应流程返回错误)
-            response.setError(new RuntimeException(msg));
+            response.setError(new RpcException(msg));
             response.setSuccess(false);
             response.setErrorMessage(msg);
         }

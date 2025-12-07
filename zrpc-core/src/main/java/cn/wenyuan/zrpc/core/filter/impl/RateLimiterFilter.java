@@ -8,6 +8,7 @@ import cn.wenyuan.zrpc.core.config.ApplicationConfig;
 import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.ratelimit.RateLimiter;
 import cn.wenyuan.zrpc.core.ratelimit.RateLimiterFactory;
+import cn.wenyuan.zrpc.common.exception.RpcException;
 
 /**
  * @ClassName RateLimiterFilter
@@ -46,11 +47,10 @@ public class RateLimiterFilter implements Filter {
         if (acquired) {
             chain.doFilter(request, response);
         } else {
-            response.setError(new RuntimeException(
-                    "Request limit exceeded for: " + rateLimitKey
-            ));
+            String message = "Request limit exceeded for: " + rateLimitKey;
+            response.setError(new RpcException(message));
             response.setSuccess(false);
-            response.setErrorMessage("Request limit exceeded for: " + rateLimitKey);
+            response.setErrorMessage(message);
         }
     }
 }

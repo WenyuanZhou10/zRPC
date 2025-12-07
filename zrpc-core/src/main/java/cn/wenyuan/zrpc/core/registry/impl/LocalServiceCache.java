@@ -39,9 +39,23 @@ public class LocalServiceCache {
     public void registerService(Object service) throws Exception {
         Class<?>[] interfaceName=service.getClass().getInterfaces();
 
+        ZrpcConfig config = ApplicationConfig.getConfig();
+        ZrpcConfig.ServerConfig serverConfig = config != null ? config.getServer() : null;
+
         for(Class<?> clazz : interfaceName){
             serviceProvider.put(clazz.getName(), service);
-            serviceRegistry.register(new ServiceInstance(clazz.getName(),host,port));
+            ServiceInstance instance = new ServiceInstance(clazz.getName(),host,port);
+            if (serverConfig != null) {
+                instance.setVersion(serverConfig.getVersion());
+                instance.setGray(serverConfig.isGray());
+                if (serverConfig.getMetadata() != null && !serverConfig.getMetadata().isEmpty()) {
+                    instance.setMetadata(new ConcurrentHashMap<>(serverConfig.getMetadata()));
+                }
+            }
+            if (instance.getMetadata() == null) {
+                instance.setMetadata(new ConcurrentHashMap<>());
+            }
+            serviceRegistry.register(instance);
         }
     }
 

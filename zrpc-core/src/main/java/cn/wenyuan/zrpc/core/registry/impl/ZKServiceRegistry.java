@@ -5,6 +5,7 @@ import cn.wenyuan.zrpc.common.message.RpcRequest;
 import cn.wenyuan.zrpc.common.service.ServiceInstance;
 import cn.wenyuan.zrpc.core.config.ApplicationConfig;
 import cn.wenyuan.zrpc.core.config.ZrpcConfig;
+import cn.wenyuan.zrpc.core.gray.GrayReleaseSelector;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBalancer;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBanlancerFactory;
 import cn.wenyuan.zrpc.core.registry.ServiceRegistry;
@@ -102,6 +103,7 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
     @Override
     public ServiceInstance getInstance(String serviceName, RpcRequest request) throws Exception {
         List<ServiceInstance> instances = getInstances(serviceName);
+        instances = GrayReleaseSelector.select(instances, request);
         ServiceInstance serviceInstance = loadBalancer.select(instances, request);
         return serviceInstance;
     }

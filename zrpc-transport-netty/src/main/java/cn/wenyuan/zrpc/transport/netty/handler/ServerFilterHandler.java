@@ -28,7 +28,7 @@ public class ServerFilterHandler extends SimpleChannelInboundHandler<RpcRequest>
     ) throws Exception {
         RpcResponse rpcResponse = RpcResponse.builder().requestId(rpcRequest.getRequestId()).build();
 
-        FilterChain filterChain = filterManager.buildChain();
+        FilterChain filterChain = filterManager.buildChain((req, resp) -> ctx.fireChannelRead(req));
         try {
             filterChain.doFilter(rpcRequest, rpcResponse);
 
@@ -36,8 +36,6 @@ public class ServerFilterHandler extends SimpleChannelInboundHandler<RpcRequest>
                 ctx.writeAndFlush(rpcResponse);
                 return;
             }
-
-            ctx.fireChannelRead(rpcRequest);
         } catch (Throwable e) {
             log.error("【ServerFilterHandler】: Filter chain execution error for request: {}",
                       rpcRequest.getRequestId(), e);

@@ -29,6 +29,8 @@
         <kryo.version>5.6.0</kryo.version>
         <protostuff.version>1.8.0</protostuff.version>
         <hessian.version>4.0.66</hessian.version>
+        <brave.version>5.16.0</brave.version>
+        <zipkin.reporter.version>2.16.3</zipkin.reporter.version>
         <junit.version>5.10.2</junit.version>
     </properties>
 
@@ -99,6 +101,21 @@
                 <groupId>com.caucho</groupId>
                 <artifactId>hessian</artifactId>
                 <version>${hessian.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zipkin.brave</groupId>
+                <artifactId>brave</artifactId>
+                <version>${brave.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zipkin.reporter2</groupId>
+                <artifactId>zipkin-reporter</artifactId>
+                <version>${zipkin.reporter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.zipkin.reporter2</groupId>
+                <artifactId>zipkin-sender-urlconnection</artifactId>
+                <version>${zipkin.reporter.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>

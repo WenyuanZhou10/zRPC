@@ -9,6 +9,8 @@ zrpc:
   server:
     host: 127.0.0.1
     port: 9999
+    version: gray
+    gray: true
   client:
     request-timeout-millis: 5000
   ratelimit:
@@ -23,3 +25,30 @@ zrpc:
       "cn.wenyuan.zrpc.demo.api.GreetingService":
         sum:
           max_concurrent: 5
+  circuit-breaker:
+    failure-rate-threshold: 50
+    slow-call-rate-threshold: 100
+    slow-call-duration-ms: 2000
+    wait-duration-ms: 5000
+    sliding-window-size: 10
+    minimum-number-of-calls: 5
+    permitted-calls-in-half-open: 2
+  tracing:
+    enabled: true
+    service-name: zrpc-demo
+    zipkin-url: http://localhost:9411/api/v2/spans
+    sampler-rate: 1.0
+  retry:
+    enabled: true
+    max-attempts: 3
+    initial-delay-ms: 100
+    backoff-multiplier: 2.0
+    retry-on: NETWORK_AND_SERVER_BUSY
+  gray-release:
+    enabled: true
+    target-version: gray
+    force-header: gray-tag
+    identity-header: user-id
+    whitelist:
+      - vip-user
+    percentage: 20

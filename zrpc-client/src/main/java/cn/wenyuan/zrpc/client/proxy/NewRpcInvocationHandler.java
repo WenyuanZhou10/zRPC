@@ -5,6 +5,7 @@ import cn.wenyuan.zrpc.core.client.RpcClient;
 import cn.wenyuan.zrpc.core.filter.client.ClientFilterChain;
 import cn.wenyuan.zrpc.core.filter.client.ClientFilterManager;
 import cn.wenyuan.zrpc.core.registry.ServiceDiscovery;
+import cn.wenyuan.zrpc.common.exception.RpcException;
 import cn.wenyuan.zrpc.common.context.RpcContext;
 import cn.wenyuan.zrpc.common.message.RpcRequest;
 import cn.wenyuan.zrpc.common.message.RpcResponse;
@@ -99,15 +100,25 @@ public class NewRpcInvocationHandler implements InvocationHandler {
         ClientFilterChain clientFilterChain = CLIENT_FILTER_MANAGER.buildChain(req -> client.sendRequest(req));
         // 网络层返回的响应结果
         CompletableFuture<RpcResponse> responseFuture = clientFilterChain.doFilter(request);
-        // responseFuture 的 thenApply 得到的派生 Future
+        final String invokeService = serviceName;
+        final String invokeMethod = method.getName();
+        final Class<?> declaredReturnType = method.getReturnType();
         CompletableFuture<Object> resultFuture = responseFuture.thenApply(rpcResponse -> {
             if (!rpcResponse.isSuccess()) {
-                throw new RuntimeException(rpcResponse.getErrorMessage());
+                Throwable error = rpcResponse.getError();
+                if (error instanceof cn.wenyuan.zrpc.common.exception.RpcException rpcException) {
+                    log.warn("RPC 调用 {}.{} 被拦截: {}", invokeService, invokeMethod, rpcException.getMessage());
+                    return defaultValue(declaredReturnType);
+                }
+                if (error instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                throw new RuntimeException(rpcResponse.getErrorMessage(), error);
             }
             return rpcResponse.getResult();
         });
 
-        Class<?> returnType = method.getReturnType();
+        Class<?> returnType = declaredReturnType;
 
         try {
             if (RpcContext.isAsyncCall()) { // 客户端开启异步，接口返回值不是 CompletableFuture

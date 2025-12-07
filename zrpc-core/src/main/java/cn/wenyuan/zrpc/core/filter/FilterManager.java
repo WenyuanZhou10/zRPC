@@ -31,7 +31,10 @@ public class FilterManager {
     }
 
     public FilterChain buildChain() {
-        return new DefaultFilterChain(this.filterList);
+        return new DefaultFilterChain(this.filterList, null);
     }
 
+    public FilterChain buildChain(DefaultFilterChain.Invoker invoker) {
+        return new DefaultFilterChain(this.filterList, invoker);
+    }
 }

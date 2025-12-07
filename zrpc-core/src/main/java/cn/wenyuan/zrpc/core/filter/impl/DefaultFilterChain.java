@@ -20,11 +20,13 @@ import java.util.List;
 public class DefaultFilterChain implements FilterChain {
 
     private final List<Filter> filters;
+    private final Invoker finalInvoker;
 
     private int index = 0;
 
-    public DefaultFilterChain(List<Filter> filters) {
+    public DefaultFilterChain(List<Filter> filters, Invoker invoker) {
         this.filters = filters;
+        this.finalInvoker = invoker;
     }
 
     @Override
@@ -36,8 +38,19 @@ public class DefaultFilterChain implements FilterChain {
             Filter nextFilter = this.filters.get(index);
             this.index++;
             nextFilter.filter(request, response, this);
+        } else if (finalInvoker != null) {
+            try {
+                finalInvoker.invoke(request, response);
+            } catch (Exception ex) {
+                throw new RuntimeException("执行最终业务逻辑失败", ex);
+            }
         } else {
             log.info("所有过滤器执行完毕，准备执行核心业务逻辑");
         }
+    }
+
+    @FunctionalInterface
+    public interface Invoker {
+        void invoke(RpcRequest request, RpcResponse response) throws Exception;
     }
 }

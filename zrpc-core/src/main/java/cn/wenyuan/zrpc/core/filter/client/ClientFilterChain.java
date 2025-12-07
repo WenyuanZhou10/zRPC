@@ -13,11 +13,16 @@ public final class ClientFilterChain {
 
     private final List<ClientFilter> filters;
     private final Invocation invocation;
-    private int index = 0;
+    private int index;
 
     ClientFilterChain(List<ClientFilter> filters, Invocation invocation) {
+        this(filters, invocation, 0);
+    }
+
+    private ClientFilterChain(List<ClientFilter> filters, Invocation invocation, int startIndex) {
         this.filters = filters;
         this.invocation = invocation;
+        this.index = startIndex;
     }
 
     public CompletableFuture<RpcResponse> doFilter(RpcRequest request) {
@@ -26,6 +31,18 @@ public final class ClientFilterChain {
             return filter.filter(request, this);
         }
         return invocation.invoke(request);
+    }
+
+    public ClientFilterChain forkFromCurrent() {
+        return new ClientFilterChain(this.filters, this.invocation, this.index);
+    }
+
+    public ClientFilterChain forkFrom(int startIndex) {
+        return new ClientFilterChain(this.filters, this.invocation, startIndex);
+    }
+
+    public int currentIndex() {
+        return this.index;
     }
 
     @FunctionalInterface
