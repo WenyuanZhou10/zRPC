@@ -32,7 +32,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
         60,
         TimeUnit.SECONDS,
         new ArrayBlockingQueue<>(1000),
-        new ThreadPoolExecutor.CallerRunsPolicy()
+        new ThreadPoolExecutor.AbortPolicy()
     );
 
     @Getter

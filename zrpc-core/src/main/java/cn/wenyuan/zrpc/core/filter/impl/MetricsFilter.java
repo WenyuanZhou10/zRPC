@@ -10,8 +10,8 @@ import cn.wenyuan.zrpc.core.filter.client.ClientFilterChain;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LongAdder;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -73,6 +73,8 @@ public class MetricsFilter implements Filter, ClientFilter {
         private final LongAdder error = new LongAdder();
         private final LongAdder totalDurationNanos = new LongAdder();
         private final AtomicInteger concurrent = new AtomicInteger(0);
+        private volatile long lastLogTimeNanos = System.nanoTime();
+        private volatile long lastLogCount = 0;
 
         private Metrics(String service, String method) {
             this.service = service;
@@ -92,11 +94,22 @@ public class MetricsFilter implements Filter, ClientFilter {
             concurrent.decrementAndGet();
             long count = total.longValue();
             if (count % LOG_INTERVAL == 0) {
-                double avgMs = (totalDurationNanos.doubleValue() / count) / 1_000_000.0;
-                double errRate = count == 0 ? 0 : (error.doubleValue() / count) * 100;
-                log.info("[Metrics] {}.{} count={}, errorRate={}%, avgRT={}ms, concurrent={}",
-                         service, method, count, String.format("%.2f", errRate),
-                         String.format("%.3f", avgMs), concurrent.get());
+                synchronized (this) {
+                    long now = System.nanoTime();
+                    long deltaCount = count - lastLogCount;
+                    long deltaNanos = now - lastLogTimeNanos;
+                    double avgMs = (totalDurationNanos.doubleValue() / count) / 1_000_000.0;
+                    double errRate = count == 0 ? 0 : (error.doubleValue() / count) * 100;
+                    double throughput = deltaNanos > 0
+                        ? (deltaCount * 1_000_000_000d) / deltaNanos
+                        : 0d;
+                    log.info("[Metrics] {}.{} total={}, errRate={}%, avgRT={}ms, concurrent={}, throughput={} qps",
+                             service, method, count, String.format("%.2f", errRate),
+                             String.format("%.3f", avgMs), concurrent.get(),
+                             String.format("%.1f", throughput));
+                    lastLogCount = count;
+                    lastLogTimeNanos = now;
+                }
             }
         }
     }

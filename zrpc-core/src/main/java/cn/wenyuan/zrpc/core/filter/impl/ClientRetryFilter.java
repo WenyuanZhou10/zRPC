@@ -8,6 +8,7 @@ import cn.wenyuan.zrpc.core.config.ApplicationConfig;
 import cn.wenyuan.zrpc.core.config.ZrpcConfig;
 import cn.wenyuan.zrpc.core.filter.client.ClientFilter;
 import cn.wenyuan.zrpc.core.filter.client.ClientFilterChain;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import java.net.ConnectException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -77,7 +78,7 @@ public class ClientRetryFilter implements ClientFilter {
     ) {
         attemptChain.doFilter(request).whenComplete((resp, throwable) -> {
             Throwable realThrowable = unwrap(throwable);
-            if (shouldRetry(resp, realThrowable) && attempt < maxAttempts) {
+            if (shouldRetry(request, resp, realThrowable) && attempt < maxAttempts) {
                 long delay = computeDelay(attempt);
                 log.warn("RPC 调用 {}.{} 失败，将在 {} ms 后进行第 {} 次重试。",
                          request.getService(), request.getMethodName(), delay, attempt + 1);
@@ -107,8 +108,12 @@ public class ClientRetryFilter implements ClientFilter {
         return (long) (initialDelayMillis * Math.pow(multiplier, attempt - 1));
     }
 
-    private boolean shouldRetry(RpcResponse resp, Throwable throwable) {
+    private boolean shouldRetry(RpcRequest request, RpcResponse resp, Throwable throwable) {
         if (throwable != null) {
+            if (throwable instanceof CallNotPermittedException) {
+                log.warn("熔断已开启，停止对 {}.{} 的重试。", request.getService(), request.getMethodName());
+                return false;
+            }
             return isNetworkException(throwable);
         }
         if (resp == null || resp.isSuccess()) {
@@ -122,9 +127,7 @@ public class ClientRetryFilter implements ClientFilter {
 
     private boolean isNetworkException(Throwable throwable) {
         Throwable cause = unwrap(throwable);
-        return cause instanceof SocketTimeoutException
-            || cause instanceof ConnectException
-            || cause instanceof SocketException;
+        return cause instanceof SocketTimeoutException || cause instanceof SocketException;
     }
 
     private Throwable unwrap(Throwable throwable) {

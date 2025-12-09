@@ -13,6 +13,14 @@ services:
       - zk_data:/data             # 推荐：持久化 ZK 的数据
       - zk_datalog:/datalog       # 推荐：持久化 ZK 的日志
     restart: always             # 推荐：容器挂了自动重启
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin-server
+    ports:
+      - "9411:9411"
+    environment:
+      - STORAGE_TYPE=mem
+    restart: unless-stopped
 
 # 声明上面用到的数据卷
 volumes:
