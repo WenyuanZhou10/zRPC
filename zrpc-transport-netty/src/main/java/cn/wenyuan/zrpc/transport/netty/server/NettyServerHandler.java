@@ -28,7 +28,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
 
     private static final ExecutorService BIZ_POOL = new ThreadPoolExecutor(
         200,
-        200,
+        2000,
         60,
         TimeUnit.SECONDS,
         new ArrayBlockingQueue<>(1000),
@@ -62,7 +62,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                         request.getParamsType()
                     );
                     Map<String, String> attachment = request.getHeaders();
-                    log.info("获取消息：{}, trace-id : {}", request, attachment.get("traceId"));
+                    String traceId = attachment != null ? attachment.get("traceId") : null;
+                    if (log.isDebugEnabled()) {
+                        log.debug("处理请求: {} traceId: {}", request.getRequestId(), traceId);
+                    }
                     Object result = method.invoke(service, request.getParams());
                     response.setSuccess(true);
                     response.setResult(result);
@@ -75,7 +78,10 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
                 ctx.writeAndFlush(response).addListener((ChannelFutureListener) future -> {
                     // 无论成功还是失败都释放信号量
                     if (request.getPostProcessor() != null) {
-                        log.info(Thread.currentThread().getName() + "释放信号量");
+                        if (log.isDebugEnabled()) {
+                            log.debug("{} 释放限流许可, request={}",
+                                      Thread.currentThread().getName(), request.getRequestId());
+                        }
                         request.getPostProcessor().run();
                     }
 

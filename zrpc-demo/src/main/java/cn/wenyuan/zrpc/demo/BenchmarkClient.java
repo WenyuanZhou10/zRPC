@@ -1,6 +1,7 @@
 package cn.wenyuan.zrpc.demo;
 
 import cn.wenyuan.zrpc.client.proxy.RpcProxyFactory;
+import cn.wenyuan.zrpc.common.context.RpcContext;
 import cn.wenyuan.zrpc.core.client.RpcClient;
 import cn.wenyuan.zrpc.core.config.ApplicationConfig;
 import cn.wenyuan.zrpc.core.config.ZrpcConfig;
@@ -10,6 +11,9 @@ import cn.wenyuan.zrpc.demo.api.GreetingService;
 import cn.wenyuan.zrpc.demo.dto.User;
 import cn.wenyuan.zrpc.transport.netty.client.NettyClient;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,7 +41,8 @@ public class BenchmarkClient {
         System.out.println("✅ 预热完成，准备压测！");
 
         // ---------------- 配置区 ----------------
-        int threadCount = 100;       // 并发线程数 (模拟 50 个用户)
+        int threadCount = 200;       // 并发线程数 (模拟 50 个用户)
+        int maxPendingPerThread = 100;
         int timeSeconds = 60;       // 压测时长 (秒)
         // ---------------------------------------
 
@@ -55,18 +60,14 @@ public class BenchmarkClient {
             executor.execute(() -> {
                 try {
                     startLatch.await(); // 等待所有线程就绪
+                    List<CompletableFuture<Void>> pending = new ArrayList<>(maxPendingPerThread);
                     while (System.currentTimeMillis() < endTime) {
-                        try {
-                            String res = greetingService.greet(new User((long) finalI, "benchmark"));
-                            if (res != null) {
-                                successCount.incrementAndGet();
-                            } else {
-                                failCount.incrementAndGet();
-                            }
-                        } catch (Exception e) {
-                            failCount.incrementAndGet();
+                        if (pending.size() >= maxPendingPerThread) {
+                            waitAny(pending);
                         }
+                        pending.add(callAsync(greetingService, finalI, successCount, failCount));
                     }
+                    waitAll(pending);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -102,7 +103,45 @@ public class BenchmarkClient {
         // 等待结束
         executor.shutdown();
         executor.awaitTermination(timeSeconds + 5, TimeUnit.SECONDS);
+        monitorThread.join();
         System.out.println("🏁 压测结束！");
+        System.out.printf("总成功: %d, 总失败: %d%n", successCount.get(), failCount.get());
+        factory.shutdown();
         System.exit(0);
+    }
+
+    private static CompletableFuture<Void> callAsync(
+        GreetingService service,
+        int userIndex,
+        AtomicLong successCount,
+        AtomicLong failCount
+    ) {
+        return RpcContext.asyncCall(() -> {
+                             try {
+                                 return service.greet(new User((long) userIndex, "benchmark"));
+                             } catch (InterruptedException e) {
+                                 throw new RuntimeException(e);
+                             }
+                         })
+            .thenAccept(res -> {
+                if (res != null) {
+                    successCount.incrementAndGet();
+                } else {
+                    failCount.incrementAndGet();
+                }
+            }).exceptionally(ex -> {
+                failCount.incrementAndGet();
+                return null;
+            });
+    }
+
+    private static void waitAny(List<CompletableFuture<Void>> futures) {
+        CompletableFuture.anyOf(futures.toArray(new CompletableFuture[0])).join();
+        futures.removeIf(CompletableFuture::isDone);
+    }
+
+    private static void waitAll(List<CompletableFuture<Void>> futures) {
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        futures.clear();
     }
 }

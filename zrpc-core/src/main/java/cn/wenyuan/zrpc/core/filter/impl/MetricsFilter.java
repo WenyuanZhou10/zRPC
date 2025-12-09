@@ -103,10 +103,10 @@ public class MetricsFilter implements Filter, ClientFilter {
                     double throughput = deltaNanos > 0
                         ? (deltaCount * 1_000_000_000d) / deltaNanos
                         : 0d;
-                    log.info("[Metrics] {}.{} total={}, errRate={}%, avgRT={}ms, concurrent={}, throughput={} qps",
-                             service, method, count, String.format("%.2f", errRate),
-                             String.format("%.3f", avgMs), concurrent.get(),
-                             String.format("%.1f", throughput));
+//                    log.info("[Metrics] {}.{} total={}, errRate={}%, avgRT={}ms, concurrent={}, throughput={} qps",
+//                             service, method, count, String.format("%.2f", errRate),
+//                             String.format("%.3f", avgMs), concurrent.get(),
+//                             String.format("%.1f", throughput));
                     lastLogCount = count;
                     lastLogTimeNanos = now;
                 }

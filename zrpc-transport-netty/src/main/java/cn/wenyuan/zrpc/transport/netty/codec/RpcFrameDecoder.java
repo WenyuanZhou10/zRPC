@@ -62,8 +62,8 @@ public class RpcFrameDecoder extends ByteToMessageDecoder {
 
         // 7. 检验消息提是否完整
         if(in.readableBytes() < length){
-            log.warn("检测到半包: 头部声明长度 {}, 实际可读 {}, 等待更多数据...",
-                     length, in.readableBytes());
+//            log.warn("检测到半包: 头部声明长度 {}, 实际可读 {}, 等待更多数据...",
+//                     length, in.readableBytes());
             in.resetReaderIndex();
             // 等待更多数据
             return;

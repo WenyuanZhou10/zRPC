@@ -20,11 +20,11 @@ zrpc:
       capacity: 10000
   bulkhead:
     default:
-      max_concurrent: 500
+      max_concurrent: 50000
     services:
       "cn.wenyuan.zrpc.demo.api.GreetingService":
         sum:
-          max_concurrent: 5000
+          max_concurrent: 50000
   circuit-breaker:
     failure-rate-threshold: 50
     slow-call-rate-threshold: 100
@@ -34,7 +34,7 @@ zrpc:
     minimum-number-of-calls: 5
     permitted-calls-in-half-open: 2
   tracing:
-    enabled: true
+    enabled: false
     service-name: zrpc-demo
     zipkin-url: http://localhost:9411/api/v2/spans
     sampler-rate: 1.0

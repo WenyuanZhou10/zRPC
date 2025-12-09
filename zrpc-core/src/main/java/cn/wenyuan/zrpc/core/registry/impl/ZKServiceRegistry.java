@@ -9,11 +9,16 @@ import cn.wenyuan.zrpc.core.gray.GrayReleaseSelector;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBalancer;
 import cn.wenyuan.zrpc.core.loadbalance.LoadBanlancerFactory;
 import cn.wenyuan.zrpc.core.registry.ServiceRegistry;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.x.discovery.ServiceCache;
 import org.apache.curator.x.discovery.ServiceDiscovery;
 import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.details.JsonInstanceSerializer;
@@ -25,7 +30,7 @@ import org.apache.curator.x.discovery.details.JsonInstanceSerializer;
  * @Date 2025/11/1 00:12
  * @Version 1.0
  */
-
+@Slf4j
 public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.registry.ServiceDiscovery {
 
     // Curator 客户端
@@ -34,6 +39,8 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
     private final ServiceDiscovery<ServiceInstance> serviceDiscovery;
     // ZK 中的根路径
     private static final String ZK_BASE_PATH = "/zrpc/service";
+    // 本地服务缓存；每个 serviceName 对应一个 Curator ServiceCache
+    private final Map<String, ServiceCache<ServiceInstance>> serviceCaches = new ConcurrentHashMap<>();
     // 负载均衡策略
     private final LoadBalancer loadBalancer;
 
@@ -93,9 +100,11 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
 
     @Override
     public List<ServiceInstance> getInstances(String serviceName) throws Exception {
-        return serviceDiscovery.queryForInstances(serviceName).stream()
-            .map(org.apache.curator.x.discovery.ServiceInstance::getPayload)
-            .collect(Collectors.toList());
+        List<ServiceInstance> cached = getCachedInstances(serviceName);
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+        return queryDirectly(serviceName);
     }
 
 
@@ -111,6 +120,14 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
     @Override
     public void close() {
         try {
+            for (Map.Entry<String, ServiceCache<ServiceInstance>> entry : serviceCaches.entrySet()) {
+                try {
+                    entry.getValue().close();
+                } catch (IOException e) {
+                    log.warn("关闭 ServiceCache [{}] 失败", entry.getKey(), e);
+                }
+            }
+            serviceCaches.clear();
             if (serviceDiscovery != null) {
                 serviceDiscovery.close();
             }
@@ -118,7 +135,39 @@ public class ZKServiceRegistry implements ServiceRegistry, cn.wenyuan.zrpc.core.
                 client.close();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("关闭 ZKServiceRegistry 失败", e);
+        }
+    }
+
+    private List<ServiceInstance> getCachedInstances(String serviceName) throws Exception {
+        ServiceCache<ServiceInstance> cache = serviceCaches.get(serviceName);
+        if (cache == null) {
+            cache = createServiceCache(serviceName);
+        }
+        return cache.getInstances().stream()
+            .map(org.apache.curator.x.discovery.ServiceInstance::getPayload)
+            .collect(Collectors.toList());
+    }
+
+    private List<ServiceInstance> queryDirectly(String serviceName) throws Exception {
+        return serviceDiscovery.queryForInstances(serviceName).stream()
+            .map(org.apache.curator.x.discovery.ServiceInstance::getPayload)
+            .collect(Collectors.toList());
+    }
+
+    private ServiceCache<ServiceInstance> createServiceCache(String serviceName) throws Exception {
+        synchronized (serviceCaches) {
+            ServiceCache<ServiceInstance> existing = serviceCaches.get(serviceName);
+            if (existing != null) {
+                return existing;
+            }
+            ServiceCache<ServiceInstance> cache =
+                serviceDiscovery.serviceCacheBuilder()
+                    .name(serviceName)
+                    .build();
+            cache.start();
+            serviceCaches.put(serviceName, cache);
+            return cache;
         }
     }
 }
